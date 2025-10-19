@@ -1,103 +1,176 @@
-import Image from "next/image";
+import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-export default function Home() {
+import AppHero from "@/components/app/AppHero";
+import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/session";
+import { getBaseUrl } from "@/lib/url";
+import { getActiveNotices } from "@/lib/notices";
+import { projects } from "@/lib/projects";
+
+type RankingRow = {
+  id: number;
+  userId: number;
+  publicId: string;
+  projectNumber: number;
+  score: number;
+  evaluatedAt: string;
+};
+
+type RankingsResponse = {
+  rankings: RankingRow[];
+  myBestScore: { score: number; evaluatedAt: string } | null;
+  projectNumber: number;
+};
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ project?: string }>;
+}) {
+  cleanupExpiredSessions();
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get("session_token")?.value;
+
+  if (!sessionToken) {
+    redirect("/login");
+  }
+
+  const sessionUser = sessionToken
+    ? getUserBySessionToken(sessionToken)
+    : null;
+
+  if (!sessionUser) {
+    redirect("/login");
+  }
+
+  const displayName = sessionUser.name?.trim()?.length
+    ? sessionUser.name
+    : `참가자 ${sessionUser.publicId}`;
+  const notices = getActiveNotices();
+
+  const resolvedSearchParams = await searchParams;
+  const projectParam = resolvedSearchParams?.project;
+  const parsedProject = projectParam ? Number.parseInt(projectParam, 10) : 1;
+  const projectNumber =
+    Number.isInteger(parsedProject) && parsedProject >= 1 && parsedProject <= 4
+      ? parsedProject
+      : 1;
+
+  const cookieHeader = cookieStore
+    .getAll()
+    .map(({ name, value }) => `${name}=${value}`)
+    .join("; ");
+
+  const baseUrl = getBaseUrl();
+
+  const response = await fetch(`${baseUrl}/api/rankings?project=${projectNumber}`, {
+    headers: {
+      Cookie: cookieHeader,
+    },
+    cache: "no-store",
+  });
+
+  if (response.status === 401) {
+    redirect("/login");
+  }
+
+  if (!response.ok) {
+    throw new Error("랭킹 정보를 불러오는데 실패했습니다.");
+  }
+
+  const data = (await response.json()) as RankingsResponse;
+  const rankings = data.rankings;
+  const myBestScore = data.myBestScore;
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10">
+      <AppHero
+        alerts={
+          notices.length
+            ? notices.map((item) => item.message)
+            : [`${displayName}님, 현 시스템은 SCH 머신러닝 미니 프로젝트의 랭킹 확인을 위한 플랫폼입니다.`]
+        }
+      />
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <h2 className="text-lg font-semibold">Top 10 랭킹 보드</h2>
+          <div className="flex items-center gap-2 justify-between">
+            {projects.map((project) => (
+              <Link
+                key={project.number}
+                href={`/?project=${project.number}`}
+                className={`rounded-md px-3 py-1 text-sm font-medium transition ${
+                  project.number === projectNumber
+                    ? "bg-[#265392] text-white shadow"
+                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                }`}
+              >
+                {project.label}
+              </Link>
+            ))}
+          </div>
+          <Link
+            href="/my-results"
+            className="inline-flex justify-center items-center rounded-md bg-[#265392] px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-[#1f4275]"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            내 결과 관리하기
+          </Link>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <div className="overflow-hidden rounded-lg border">
+          <table className="min-w-full divide-y divide-neutral-200 bg-white text-sm">
+            <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
+              <tr>
+                <th scope="col" className="px-4 py-3">순위</th>
+                <th scope="col" className="px-4 py-3">익명 ID</th>
+                <th scope="col" className="px-4 py-3 text-right">점수</th>
+                <th scope="col" className="px-4 py-3">기록일</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-100 text-neutral-700">
+              {rankings.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-6 text-center text-neutral-500">
+                    아직 등록된 랭킹 정보가 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                rankings.map((row, index) => {
+                  const isMyRecord = row.userId === sessionUser.id;
+                  const formattedDate = new Date(row.evaluatedAt).toLocaleString("ko-KR", {
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+
+                  return (
+                    <tr
+                      key={row.id}
+                      className={isMyRecord ? "bg-blue-50/60 font-semibold text-[#1f4275]" : ""}
+                    >
+                      <td className="px-4 py-3 font-semibold">{index + 1}</td>
+                      <td className="px-4 py-3 text-neutral-500">{row.publicId}</td>
+                      <td className="px-4 py-3 text-right">{row.score.toFixed(4)}</td>
+                      <td className="px-4 py-3">{formattedDate}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+        {myBestScore ? (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            나의 최고 점수는 {myBestScore.score.toFixed(4)}점이며,{" "}
+            {new Date(myBestScore.evaluatedAt).toLocaleString("ko-KR")}에 기록되었습니다.
+          </div>
+        ) : (
+          <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+            아직 등록된 점수가 없습니다. 점수를 제출하고 기록을 만들어 보세요!
+          </div>
+        )}
+      </div>
     </div>
   );
 }
