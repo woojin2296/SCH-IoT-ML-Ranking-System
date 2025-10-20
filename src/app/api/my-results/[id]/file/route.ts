@@ -5,6 +5,7 @@ import path from "path";
 import { getDb } from "@/lib/db";
 import { requireSessionUser } from "@/lib/auth-guard";
 import { logUserRequest } from "@/lib/logs";
+import { resolveStoredFilePath } from "@/lib/uploads";
 
 export async function GET(
   _request: NextRequest,
@@ -71,9 +72,21 @@ export async function GET(
     return NextResponse.json({ error: "접근 권한이 없습니다." }, { status: 403 });
   }
 
+  let absolutePath: string | null = null;
   try {
-    const fileBuffer = await readFile(record.filePath);
-    const fileName = record.fileName ?? path.basename(record.filePath);
+    absolutePath = resolveStoredFilePath(record.filePath);
+  } catch (error) {
+    console.error("Invalid stored file path", error);
+  }
+
+  if (!absolutePath) {
+    logRequest(500, { scoreId: recordId, reason: "invalid_stored_path" });
+    return NextResponse.json({ error: "파일을 찾을 수 없습니다." }, { status: 500 });
+  }
+
+  try {
+    const fileBuffer = await readFile(absolutePath);
+    const fileName = record.fileName ?? path.basename(absolutePath);
     const fileType = record.fileType ?? "application/octet-stream";
 
     const response = new NextResponse(fileBuffer, {

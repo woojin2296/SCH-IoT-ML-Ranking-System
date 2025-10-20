@@ -187,13 +187,26 @@ export default async function Home({
               ) : (
                 rankings.map((row) => {
                   const isMyRecord = row.userId === sessionUser.id;
+                  const isTopThree = row.position <= 3;
+                  const topRankClasses: Record<number, string> = {
+                    1: "bg-amber-50 text-amber-900 ring-1 ring-amber-200",
+                    2: "bg-slate-100 text-slate-700 ring-1 ring-slate-200",
+                    3: "bg-orange-50 text-orange-900 ring-1 ring-orange-200",
+                  };
+                  const rowClassNames = [
+                    isMyRecord ? "outline outline-2 outline-[#1f4275]/60 bg-blue-50/50" : "",
+                    isTopThree ? topRankClasses[row.position as 1 | 2 | 3] ?? "" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
+                  const medalIcons = ["🥇", "🥈", "🥉"];
+                  const rankLabel = isTopThree
+                    ? `${medalIcons[row.position - 1]} ${row.position}`
+                    : row.position;
 
                   return (
-                    <tr
-                      key={row.id}
-                      className={isMyRecord ? "bg-blue-50/60 font-semibold text-[#1f4275]" : ""}
-                    >
-                      <td className="px-4 py-3 font-semibold">{row.position}</td>
+                    <tr key={row.id} className={rowClassNames}>
+                      <td className="px-4 py-3 font-semibold">{rankLabel}</td>
                       <td className="px-4 py-3 text-neutral-500">{row.publicId}</td>
                       <td className="px-4 py-3 text-right">{row.score.toFixed(4)}</td>
                     </tr>

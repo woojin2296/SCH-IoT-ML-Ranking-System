@@ -233,6 +233,87 @@ export default async function AdminPage() {
   const availableYears = Array.from(yearSet).sort((a, b) => b - a);
   const requestMethodOptions = Array.from(new Set(requestLogs.map((log) => log.method))).sort();
 
+  const now = new Date();
+  const defaultFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const rankingDefaultFrom = new Date(defaultFrom.setHours(0, 0, 0, 0)).toISOString();
+  const rankingDefaultTo = new Date(now.setHours(23, 59, 59, 999)).toISOString();
+
+  const rankingRows = db
+    .prepare(
+      `
+        WITH filtered AS (
+          SELECT
+            es.id,
+            es.user_id,
+            es.project_number,
+            es.score,
+            es.evaluated_at,
+            es.file_name,
+            es.file_size,
+            es.file_path,
+            u.student_number,
+            u.name
+          FROM evaluation_scores es
+          INNER JOIN users u ON u.id = es.user_id
+          WHERE es.project_number = 1
+            AND es.evaluated_at BETWEEN ? AND ?
+        ),
+        ranked AS (
+          SELECT
+            id,
+            student_number,
+            name,
+            score,
+            evaluated_at,
+            file_name,
+            file_size,
+            file_path,
+            ROW_NUMBER() OVER (
+              PARTITION BY student_number
+              ORDER BY score DESC, evaluated_at ASC
+            ) AS per_user_rank
+          FROM filtered
+        ),
+        best AS (
+          SELECT
+            id,
+            student_number,
+            name,
+            score,
+            evaluated_at,
+            file_name,
+            file_size,
+            file_path,
+            ROW_NUMBER() OVER (ORDER BY score DESC, evaluated_at ASC) AS position
+          FROM ranked
+          WHERE per_user_rank = 1
+        )
+        SELECT
+          id,
+          position,
+          student_number AS studentNumber,
+          name,
+          score,
+          evaluated_at AS evaluatedAt,
+          file_name AS fileName,
+          file_size AS fileSize,
+          CASE WHEN file_path IS NOT NULL THEN 1 ELSE 0 END AS hasFile
+        FROM best
+        ORDER BY position ASC
+      `,
+    )
+    .all(rankingDefaultFrom, rankingDefaultTo) as {
+      id: number;
+      position: number;
+      studentNumber: string;
+      name: string | null;
+      score: number;
+      evaluatedAt: string;
+      fileName: string | null;
+      fileSize: number | null;
+      hasFile: number;
+    }[];
+
   return (
     <div className="min-h-svh flex flex-col gap-6 p-6 md:p-10">
       <AppHero
@@ -256,6 +337,12 @@ export default async function AdminPage() {
         availableYears={availableYears}
         selectedYear={availableYears[0] ?? new Date().getFullYear()}
         requestMethodOptions={requestMethodOptions}
+        initialRankingRecords={rankingRows.map((row) => ({
+          ...row,
+          hasFile: Boolean(row.hasFile),
+        }))}
+        rankingDefaultFrom={rankingDefaultFrom}
+        rankingDefaultTo={rankingDefaultTo}
       />
     </div>
   );

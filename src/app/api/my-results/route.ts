@@ -6,6 +6,7 @@ import path from "path";
 import { getDb } from "@/lib/db";
 import { requireSessionUser } from "@/lib/auth-guard";
 import { logEvaluationChange, logUserRequest } from "@/lib/logs";
+import { ALLOWED_UPLOAD_EXTENSIONS, resolveWithinUploadRoot, resolveStoredFilePath } from "@/lib/uploads";
 
 type ResultRow = {
   id: number;
@@ -17,7 +18,6 @@ type ResultRow = {
   hasFile: boolean | number;
 };
 
-const UPLOAD_ROOT = path.join(process.cwd(), "uploads", "evaluation-scores");
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
 
 export async function GET(request: NextRequest) {
@@ -150,17 +150,50 @@ export async function POST(request: NextRequest) {
 
   const originalFileName = file.name ?? "submission";
   const sanitizedFileName = originalFileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const extension = path.extname(sanitizedFileName).toLowerCase();
+
+  if (!ALLOWED_UPLOAD_EXTENSIONS.has(extension)) {
+    logRequest(400, { reason: "disallowed_extension", extension, projectNumber });
+    return NextResponse.json(
+      { error: "허용되지 않은 파일 형식입니다. (.ipynb 또는 .py만 업로드 가능)" },
+      { status: 400 },
+    );
+  }
+
   const uniqueId = randomUUID();
   const storedFileName = `${uniqueId}_${sanitizedFileName}`;
-  const filePath = path.join(UPLOAD_ROOT, String(sessionUser.id));
-  const fullStoredPath = path.join(filePath, storedFileName);
+  const relativeDirectory = path.join(String(sessionUser.id));
+  const relativePath = path.join(relativeDirectory, storedFileName);
+  const fullStoredPath = resolveWithinUploadRoot(relativePath);
 
   const db = getDb();
 
-  await mkdir(filePath, { recursive: true });
+  await mkdir(path.dirname(fullStoredPath), { recursive: true });
 
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
+
+  if (extension === ".ipynb") {
+    try {
+      const notebookJson = JSON.parse(buffer.toString("utf8"));
+      if (!notebookJson || typeof notebookJson !== "object" || !Array.isArray((notebookJson as { cells?: unknown[] }).cells)) {
+        logRequest(400, { reason: "invalid_ipynb_structure", projectNumber });
+        return NextResponse.json({ error: "유효한 주피터 노트북 파일이 아닙니다." }, { status: 400 });
+      }
+    } catch {
+      logRequest(400, { reason: "invalid_ipynb_json", projectNumber });
+      return NextResponse.json({ error: "주피터 노트북 파일이 손상되었거나 JSON 형식이 아닙니다." }, { status: 400 });
+    }
+  }
+
+  if (extension === ".py") {
+    if (buffer.includes(0)) {
+      logRequest(400, { reason: "python_contains_null_byte", projectNumber });
+      return NextResponse.json({ error: "파이썬 스크립트에 유효하지 않은 문자가 포함되어 있습니다." }, { status: 400 });
+    }
+  }
+
+  const inferredFileType = extension === ".ipynb" ? "application/json" : "text/x-python";
 
   try {
     await writeFile(fullStoredPath, buffer);
@@ -176,9 +209,9 @@ export async function POST(request: NextRequest) {
       sessionUser.id,
       projectNumber,
       score,
-      fullStoredPath,
+      relativePath,
       originalFileName,
-      file.type || "application/octet-stream",
+      inferredFileType,
       file.size,
     );
 
@@ -301,9 +334,10 @@ export async function DELETE(request: NextRequest) {
 
     stmt.run(id, sessionUser.id);
 
-    if (existing.filePath) {
+    const absoluteStoredPath = resolveStoredFilePath(existing.filePath ?? null);
+    if (absoluteStoredPath) {
       try {
-        await unlink(existing.filePath);
+        await unlink(absoluteStoredPath);
       } catch (unlinkError) {
         console.error("Failed to delete attachment", unlinkError);
       }
