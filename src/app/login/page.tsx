@@ -69,7 +69,9 @@ export default function LoginPage() {
     try {
       const response = await fetch(`/api/users/${encodeURIComponent(studentNumber)}`)
       if (!response.ok) {
-        throw new Error("사용자 조회 중 오류가 발생했습니다.")
+        const data = (await response.json().catch(() => ({}))) as { error?: string }
+        setError(data?.error ?? "사용자 조회 중 오류가 발생했습니다.")
+        return
       }
       const data: { exists: boolean; user: UserRecord | null } = await response.json()
 
@@ -189,14 +191,15 @@ export default function LoginPage() {
         }),
       })
 
-      const data = (await response.json()) as {
+      const data = (await response.json().catch(() => ({}))) as {
         success?: boolean
         error?: string
         user?: UserRecord
       }
 
-      if (!response.ok) {
-        throw new Error(data?.error ?? "회원가입에 실패했습니다.")
+      if (!response.ok || !data.success) {
+        setError(data?.error ?? "회원가입에 실패했습니다.")
+        return
       }
 
       setUser(data.user ?? null)

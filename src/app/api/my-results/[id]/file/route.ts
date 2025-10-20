@@ -4,29 +4,29 @@ import path from "path";
 
 import { getDb } from "@/lib/db";
 import { requireSessionUser } from "@/lib/auth-guard";
-import { logUserRequest } from "@/lib/logs";
 import { resolveStoredFilePath } from "@/lib/uploads";
+import { createRequestLogger } from "@/lib/request-logger";
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
+  const baseLogger = createRequestLogger(request, request.nextUrl.pathname, request.method);
   const sessionUser = await requireSessionUser();
 
   if (!sessionUser) {
+    baseLogger(401, { reason: "unauthorized" });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const logRequest = (status: number, metadata?: Record<string, unknown>) =>
-    logUserRequest({
-      userId: sessionUser.id,
-      path: `/api/my-results/${id}/file`,
-      method: "GET",
-      status,
-      metadata,
-    });
+  const logRequest = createRequestLogger(
+    request,
+    request.nextUrl.pathname,
+    request.method,
+    sessionUser.id,
+  );
 
-  const { id } = await params;
   const recordId = Number.parseInt(id, 10);
 
   if (!Number.isInteger(recordId) || recordId <= 0) {

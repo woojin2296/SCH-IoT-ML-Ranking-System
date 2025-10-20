@@ -14,14 +14,19 @@ export const resolveWithinUploadRoot = (relativePath: string) => {
 
 export const resolveStoredFilePath = (storedPath: string | null) => {
   if (!storedPath) return null;
-  const base = path.resolve(UPLOAD_ROOT);
-  const candidate = path.isAbsolute(storedPath)
-    ? path.resolve(storedPath)
-    : path.resolve(base, storedPath);
+  try {
+    const base = path.resolve(UPLOAD_ROOT);
+    const candidate = path.isAbsolute(storedPath)
+      ? path.resolve(storedPath)
+      : path.resolve(base, storedPath);
 
-  if (!candidate.startsWith(base)) {
-    throw new Error("Invalid stored file path");
+    if (!candidate.startsWith(base)) {
+      return null;
+    }
+
+    return candidate;
+  } catch (error) {
+    console.error("Failed to resolve stored file path", storedPath, error);
+    return null;
   }
-
-  return candidate;
 };

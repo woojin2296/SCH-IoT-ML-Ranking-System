@@ -5,8 +5,10 @@ import path from "path";
 
 import { getDb } from "@/lib/db";
 import { requireSessionUser } from "@/lib/auth-guard";
-import { logEvaluationChange, logUserRequest } from "@/lib/logs";
+import { logEvaluationChange } from "@/lib/logs";
 import { ALLOWED_UPLOAD_EXTENSIONS, resolveWithinUploadRoot, resolveStoredFilePath } from "@/lib/uploads";
+import { createRequestLogger } from "@/lib/request-logger";
+import { getSeoulTimestamp } from "@/lib/time";
 
 type ResultRow = {
   id: number;
@@ -21,26 +23,15 @@ type ResultRow = {
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
 
 export async function GET(request: NextRequest) {
+  const baseLogger = createRequestLogger(request, "/api/my-results", request.method);
   const sessionUser = await requireSessionUser();
 
   if (!sessionUser) {
-    logUserRequest({
-      path: "/api/my-results",
-      method: request.method,
-      status: 401,
-      metadata: { reason: "unauthorized" },
-    });
+    baseLogger(401, { reason: "unauthorized" });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const logRequest = (status: number, metadata?: Record<string, unknown>) =>
-    logUserRequest({
-      userId: sessionUser.id,
-      path: "/api/my-results",
-      method: request.method,
-      status,
-      metadata,
-    });
+  const logRequest = createRequestLogger(request, "/api/my-results", request.method, sessionUser.id);
 
   const projectParam = request.nextUrl.searchParams.get("project");
   const projectNumber = projectParam ? Number.parseInt(projectParam, 10) : null;
@@ -88,26 +79,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const baseLogger = createRequestLogger(request, "/api/my-results", request.method);
   const sessionUser = await requireSessionUser();
 
   if (!sessionUser) {
-    logUserRequest({
-      path: "/api/my-results",
-      method: request.method,
-      status: 401,
-      metadata: { reason: "unauthorized" },
-    });
+    baseLogger(401, { reason: "unauthorized" });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const logRequest = (status: number, metadata?: Record<string, unknown>) =>
-    logUserRequest({
-      userId: sessionUser.id,
-      path: "/api/my-results",
-      method: request.method,
-      status,
-      metadata,
-    });
+  const logRequest = createRequestLogger(request, "/api/my-results", request.method, sessionUser.id);
 
   const formData = await request.formData();
   const projectNumberRaw = formData.get("projectNumber");
@@ -198,10 +178,21 @@ export async function POST(request: NextRequest) {
   try {
     await writeFile(fullStoredPath, buffer);
 
+    const evaluatedAt = getSeoulTimestamp();
+
     const insert = db.prepare(
       `
-        INSERT INTO evaluation_scores (user_id, project_number, score, file_path, file_name, file_type, file_size)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO evaluation_scores (
+          user_id,
+          project_number,
+          score,
+          file_path,
+          file_name,
+          file_type,
+          file_size,
+          evaluated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `,
     );
 
@@ -213,6 +204,7 @@ export async function POST(request: NextRequest) {
       originalFileName,
       inferredFileType,
       file.size,
+      evaluatedAt,
     );
 
     logEvaluationChange({
@@ -230,6 +222,7 @@ export async function POST(request: NextRequest) {
       score,
       fileName: originalFileName,
       fileSize: file.size,
+      evaluatedAt,
     });
 
     return NextResponse.json(
@@ -252,26 +245,15 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const baseLogger = createRequestLogger(request, "/api/my-results", request.method);
   const sessionUser = await requireSessionUser();
 
   if (!sessionUser) {
-    logUserRequest({
-      path: "/api/my-results",
-      method: request.method,
-      status: 401,
-      metadata: { reason: "unauthorized" },
-    });
+    baseLogger(401, { reason: "unauthorized" });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const logRequest = (status: number, metadata?: Record<string, unknown>) =>
-    logUserRequest({
-      userId: sessionUser.id,
-      path: "/api/my-results",
-      method: request.method,
-      status,
-      metadata,
-    });
+  const logRequest = createRequestLogger(request, "/api/my-results", request.method, sessionUser.id);
 
   type Payload = {
     id?: number;
