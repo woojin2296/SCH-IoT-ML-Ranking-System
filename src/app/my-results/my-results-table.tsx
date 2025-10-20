@@ -10,6 +10,9 @@ type ScoreRow = {
   projectNumber: number;
   score: number;
   evaluatedAt: string;
+  fileName: string | null;
+  fileSize: number | null;
+  hasFile: boolean;
 };
 
 type Props = {
@@ -88,6 +91,9 @@ export default function MyResultsTable({ scores }: Props) {
               <th scope="col" className="px-4 py-3">
                 제출일
               </th>
+              <th scope="col" className="px-4 py-3 text-center">
+                첨부
+              </th>
               <th scope="col" className="px-4 py-3 text-right">
                 관리
               </th>
@@ -101,6 +107,20 @@ export default function MyResultsTable({ scores }: Props) {
                 <td className="px-4 py-3 text-right">{row.score.toFixed(4)}</td>
                 <td className="px-4 py-3">
                   {new Date(row.evaluatedAt).toLocaleString("ko-KR")}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  {row.hasFile ? (
+                    <a
+                      href={`/api/my-results/${row.id}/file`}
+                      className="inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-xs font-medium text-[#265392] transition hover:border-[#265392]"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {row.fileName ?? "파일"}
+                    </a>
+                  ) : (
+                    <span className="text-xs text-neutral-400">없음</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Button

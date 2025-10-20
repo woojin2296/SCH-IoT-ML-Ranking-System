@@ -12,6 +12,14 @@ type EvaluationLogEntry = {
   payload?: Record<string, unknown> | null;
 };
 
+type RequestLogEntry = {
+  userId?: number | null;
+  path: string;
+  method: string;
+  status?: number | null;
+  metadata?: Record<string, unknown> | null;
+};
+
 export function logEvaluationChange(entry: EvaluationLogEntry) {
   const db = getDb();
 
@@ -36,5 +44,28 @@ export function logEvaluationChange(entry: EvaluationLogEntry) {
     entry.projectNumber ?? null,
     entry.score ?? null,
     entry.payload ? JSON.stringify(entry.payload) : null,
+  );
+}
+
+export function logUserRequest(entry: RequestLogEntry) {
+  const db = getDb();
+
+  db.prepare(
+    `
+      INSERT INTO request_logs (
+        user_id,
+        path,
+        method,
+        status,
+        metadata
+      )
+      VALUES (?, ?, ?, ?, ?)
+    `,
+  ).run(
+    entry.userId ?? null,
+    entry.path,
+    entry.method,
+    entry.status ?? null,
+    entry.metadata ? JSON.stringify(entry.metadata) : null,
   );
 }

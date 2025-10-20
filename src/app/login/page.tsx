@@ -16,6 +16,7 @@ type UserRecord = {
   name: string | null
   publicId: string
   role: string
+  semester: number
   lastLoginAt: string | null
   isActive: number
   createdAt: string
@@ -130,10 +131,14 @@ export default function LoginPage() {
         }),
       })
 
-      const data = (await response.json()) as { success?: boolean; error?: string }
+      const data = (await response.json().catch(() => ({}))) as {
+        success?: boolean
+        error?: string
+      }
 
-      if (!response.ok) {
-        throw new Error(data?.error ?? "로그인에 실패했습니다.")
+      if (!response.ok || !data.success) {
+        setError(data?.error ?? "로그인에 실패했습니다.")
+        return
       }
 
       router.replace("/")

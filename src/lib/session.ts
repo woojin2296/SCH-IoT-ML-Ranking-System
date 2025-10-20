@@ -10,6 +10,7 @@ export type SessionUser = {
   name: string | null;
   publicId: string;
   role: string;
+  semester: number;
   lastLoginAt: string | null;
   isActive: number;
   createdAt: string;
@@ -62,6 +63,10 @@ export function getUserBySessionToken(
           u.name,
           u.public_id AS publicId,
           u.role,
+          CASE
+            WHEN u.semester >= 100000 THEN CAST(u.semester / 100 AS INTEGER)
+            ELSE u.semester
+          END AS semester,
           u.last_login_at AS lastLoginAt,
           u.is_active AS isActive,
           u.created_at AS createdAt,
