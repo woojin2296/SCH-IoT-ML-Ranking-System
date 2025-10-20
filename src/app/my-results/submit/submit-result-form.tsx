@@ -16,6 +16,7 @@ export default function SubmitResultForm() {
   const router = useRouter();
   const [projectNumber, setProjectNumber] = useState<number>(projects[0].number);
   const [score, setScore] = useState<string>("");
+  const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<SubmitState>("idle");
   const [noticeMessages, setNoticeMessages] = useState<string[]>([]);
@@ -58,17 +59,21 @@ export default function SubmitResultForm() {
       return;
     }
 
+    if (!file) {
+      setError("제출 파일을 첨부해주세요.");
+      return;
+    }
+
     setStatus("submitting");
     try {
+      const formData = new FormData();
+      formData.append("projectNumber", String(projectNumber));
+      formData.append("score", String(numericScore));
+      formData.append("attachment", file);
+
       const response = await fetch("/api/my-results", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          projectNumber,
-          score: numericScore,
-        }),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -131,10 +136,22 @@ export default function SubmitResultForm() {
             inputMode="decimal"
             step="0.0001"
             placeholder="예: 0.9123"
-            value={score}
-            onChange={(event) => setScore(event.target.value)}
-            required
-          />
+          value={score}
+          onChange={(event) => setScore(event.target.value)}
+          required
+        />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="attachment">결과 파일</Label>
+            <Input
+              id="attachment"
+              type="file"
+              onChange={(event) => {
+                setFile(event.target.files?.[0] ?? null);
+              }}
+              required
+            />
+            <p className="text-xs text-neutral-500">파일은 10MB 이하로 업로드해주세요.</p>
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <div className="flex gap-2">

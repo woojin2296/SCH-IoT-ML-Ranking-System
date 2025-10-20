@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { Notice } from "@/lib/notices";
@@ -11,6 +11,7 @@ type UserRow = {
   studentNumber: string;
   name: string | null;
   role: string;
+  semester: number;
   publicId: string;
   lastLoginAt: string | null;
   createdAt: string;
@@ -26,6 +27,10 @@ type ScoreRow = {
   projectNumber: number;
   score: number;
   evaluatedAt: string;
+  fileName: string | null;
+  fileSize: number | null;
+  hasFile: boolean;
+  userYear: number;
 };
 
 type Props = {
@@ -33,6 +38,10 @@ type Props = {
   initialScores: ScoreRow[];
   initialNotices: Notice[];
   initialLogs: LogRow[];
+  initialRequestLogs: RequestLogRow[];
+  availableYears: number[];
+  selectedYear: number;
+  requestMethodOptions: string[];
 };
 
 const ROLE_OPTIONS = [
@@ -51,16 +60,42 @@ type LogRow = {
   projectNumber: number | null;
   score: number | null;
   createdAt: string;
+  logYear: number | null;
 };
 
-export default function AdminDashboard({ initialUsers, initialScores, initialNotices, initialLogs }: Props) {
-  const [activeTab, setActiveTab] = useState<"users" | "scores" | "notices" | "logs">("users");
+type RequestLogRow = {
+  id: number;
+  userId: number | null;
+  userPublicId: string | null;
+  userStudentNumber: string | null;
+  name: string | null;
+  path: string;
+  method: string;
+  status: number | null;
+  metadata: Record<string, unknown> | string | null;
+  createdAt: string;
+  logYear: number | null;
+};
+
+export default function AdminDashboard({
+  initialUsers,
+  initialScores,
+  initialNotices,
+  initialLogs,
+  initialRequestLogs,
+  availableYears,
+  selectedYear,
+  requestMethodOptions,
+}: Props) {
+  const [activeTab, setActiveTab] = useState<"users" | "scores" | "notices" | "logs" | "requestLogs">("users");
   const [users, setUsers] = useState(initialUsers);
   const [scores, setScores] = useState(initialScores);
   const [notices, setNotices] = useState(initialNotices);
-  const [logs] = useState(initialLogs);
+  const [logs, setLogs] = useState(initialLogs);
+  const [requestLogs, setRequestLogs] = useState(initialRequestLogs);
   const [scorePage, setScorePage] = useState(1);
   const [logPage, setLogPage] = useState(1);
+  const [requestLogPage, setRequestLogPage] = useState(1);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [userDraft, setUserDraft] = useState<{ name: string; studentNumber: string; role: string } | null>(null);
   const [userMessage, setUserMessage] = useState<string | null>(null);
@@ -74,9 +109,167 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
   const [editingNoticeId, setEditingNoticeId] = useState<number | null>(null);
   const [noticeDraft, setNoticeDraft] = useState<{ message: string; isActive: boolean } | null>(null);
   const pageSize = 10;
+  const initialYearOptions = availableYears.length ? availableYears : [selectedYear];
+  const normalizedSelectedYear =
+    initialYearOptions.find((year) => year === selectedYear) ?? initialYearOptions[0] ?? null;
+  const initialYearFilter: number | "all" = normalizedSelectedYear ?? "all";
+  const [userYearFilter, setUserYearFilter] = useState<number | "all">(initialYearFilter);
+  const [scoreYearFilter, setScoreYearFilter] = useState<number | "all">(initialYearFilter);
+  const [logYearFilter, setLogYearFilter] = useState<number | "all">(initialYearFilter);
+  const [requestLogYearFilter, setRequestLogYearFilter] = useState<number | "all">(initialYearFilter);
+  const [requestLogPathFilter, setRequestLogPathFilter] = useState("");
+  const [requestLogMethodFilter, setRequestLogMethodFilter] = useState<string | "all">("all");
+  const [yearOptions, setYearOptions] = useState(() => initialYearOptions);
+  const [methodOptions, setMethodOptions] = useState(() =>
+    requestMethodOptions.length ? requestMethodOptions : ["GET", "POST"],
+  );
 
-  const scoreTotalPages = Math.max(1, Math.ceil(scores.length / pageSize));
-  const logTotalPages = Math.max(1, Math.ceil(logs.length / pageSize));
+  useEffect(() => {
+    setUsers(initialUsers);
+    setEditingUserId(null);
+    setUserDraft(null);
+    setSemesterDraft(null);
+    setUserMessage(null);
+  }, [initialUsers]);
+
+  useEffect(() => {
+    setScores(initialScores);
+    setScorePage(1);
+    setScoreMessage(null);
+  }, [initialScores]);
+
+  useEffect(() => {
+    setLogs(initialLogs);
+    setLogPage(1);
+  }, [initialLogs]);
+
+  useEffect(() => {
+    setRequestLogs(initialRequestLogs);
+    setRequestLogPage(1);
+  }, [initialRequestLogs]);
+
+  useEffect(() => {
+    const methods = new Set<string>(requestMethodOptions.map((method) => method.toUpperCase()));
+    requestLogs.forEach((log) => methods.add(log.method.toUpperCase()));
+    const next = Array.from(methods).sort();
+    setMethodOptions(next.length ? next : ["GET", "POST"]);
+  }, [requestMethodOptions, requestLogs]);
+
+  useEffect(() => {
+    setNotices(initialNotices);
+  }, [initialNotices]);
+
+  useEffect(() => {
+    const dynamicSet = new Set<number>(availableYears);
+    users.forEach((user) => dynamicSet.add(user.semester));
+    scores.forEach((score) => dynamicSet.add(score.userYear));
+    logs.forEach((log) => {
+      if (typeof log.logYear === "number") {
+        dynamicSet.add(log.logYear);
+      }
+    });
+    requestLogs.forEach((log) => {
+      if (typeof log.logYear === "number") {
+        dynamicSet.add(log.logYear);
+      }
+    });
+    const nextYearOptions = Array.from(dynamicSet).sort((a, b) => b - a);
+    setYearOptions(nextYearOptions);
+  }, [availableYears, users, scores, logs, requestLogs]);
+
+  useEffect(() => {
+    if (userYearFilter !== "all" && !yearOptions.includes(userYearFilter)) {
+      setUserYearFilter("all");
+    }
+    if (scoreYearFilter !== "all" && !yearOptions.includes(scoreYearFilter)) {
+      setScoreYearFilter("all");
+    }
+    if (logYearFilter !== "all" && !yearOptions.includes(logYearFilter)) {
+      setLogYearFilter("all");
+    }
+    if (requestLogYearFilter !== "all" && !yearOptions.includes(requestLogYearFilter)) {
+      setRequestLogYearFilter("all");
+    }
+    if (requestLogMethodFilter !== "all" && !methodOptions.includes(requestLogMethodFilter)) {
+      setRequestLogMethodFilter("all");
+    }
+  }, [yearOptions, methodOptions, userYearFilter, scoreYearFilter, logYearFilter, requestLogYearFilter, requestLogMethodFilter]);
+
+  useEffect(() => {
+    setScorePage(1);
+  }, [scoreYearFilter]);
+
+  useEffect(() => {
+    setLogPage(1);
+  }, [logYearFilter]);
+
+  useEffect(() => {
+    setRequestLogPage(1);
+  }, [requestLogYearFilter]);
+
+  useEffect(() => {
+    setRequestLogPage(1);
+  }, [requestLogPathFilter]);
+
+  useEffect(() => {
+    setRequestLogPage(1);
+  }, [requestLogMethodFilter]);
+
+  const handleUserYearFilter = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    setUserYearFilter(value === "all" ? "all" : Number.parseInt(value, 10));
+  };
+
+  const handleScoreYearFilter = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    setScoreYearFilter(value === "all" ? "all" : Number.parseInt(value, 10));
+  };
+
+  const handleLogYearFilter = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    setLogYearFilter(value === "all" ? "all" : Number.parseInt(value, 10));
+  };
+
+  const handleRequestLogYearFilter = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    setRequestLogYearFilter(value === "all" ? "all" : Number.parseInt(value, 10));
+  };
+
+  const filteredUsers = useMemo(() => {
+    if (userYearFilter === "all") {
+      return users;
+    }
+    return users.filter((user) => user.semester === userYearFilter);
+  }, [users, userYearFilter]);
+
+  const filteredScores = useMemo(() => {
+    if (scoreYearFilter === "all") {
+      return scores;
+    }
+    return scores.filter((score) => score.userYear === scoreYearFilter);
+  }, [scores, scoreYearFilter]);
+
+  const filteredLogs = useMemo(() => {
+    if (logYearFilter === "all") {
+      return logs;
+    }
+    return logs.filter((log) => log.logYear === logYearFilter);
+  }, [logs, logYearFilter]);
+
+  const filteredRequestLogs = useMemo(() => {
+    return requestLogs.filter((log) => {
+      const matchesYear = requestLogYearFilter === "all" || log.logYear === requestLogYearFilter;
+      const matchesPath = requestLogPathFilter.trim().length
+        ? log.path.toLowerCase().includes(requestLogPathFilter.trim().toLowerCase())
+        : true;
+      const matchesMethod = requestLogMethodFilter === "all" || log.method === requestLogMethodFilter;
+      return matchesYear && matchesPath && matchesMethod;
+    });
+  }, [requestLogs, requestLogYearFilter, requestLogPathFilter, requestLogMethodFilter]);
+
+  const scoreTotalPages = Math.max(1, Math.ceil(filteredScores.length / pageSize));
+  const logTotalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
+  const requestLogTotalPages = Math.max(1, Math.ceil(filteredRequestLogs.length / pageSize));
 
   useEffect(() => {
     setScorePage((prev) => Math.min(prev, scoreTotalPages));
@@ -86,15 +279,24 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
     setLogPage((prev) => Math.min(prev, logTotalPages));
   }, [logTotalPages]);
 
+  useEffect(() => {
+    setRequestLogPage((prev) => Math.min(prev, requestLogTotalPages));
+  }, [requestLogTotalPages]);
+
   const paginatedScores = useMemo(() => {
     const start = (scorePage - 1) * pageSize;
-    return scores.slice(start, start + pageSize);
-  }, [scores, scorePage]);
+    return filteredScores.slice(start, start + pageSize);
+  }, [filteredScores, scorePage]);
 
   const paginatedLogs = useMemo(() => {
     const start = (logPage - 1) * pageSize;
-    return logs.slice(start, start + pageSize);
-  }, [logs, logPage]);
+    return filteredLogs.slice(start, start + pageSize);
+  }, [filteredLogs, logPage]);
+
+  const paginatedRequestLogs = useMemo(() => {
+    const start = (requestLogPage - 1) * pageSize;
+    return filteredRequestLogs.slice(start, start + pageSize);
+  }, [filteredRequestLogs, requestLogPage]);
 
   const beginEditUser = (user: UserRow) => {
     setEditingUserId(user.id);
@@ -104,22 +306,27 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
       role: user.role,
     });
     setUserMessage(null);
+    setSemesterDraft(user.semester.toString());
   };
 
   const cancelEdit = () => {
     setEditingUserId(null);
     setUserDraft(null);
+    setSemesterDraft(null);
   };
 
   const updateDraft = (field: "name" | "studentNumber" | "role", value: string) => {
     setUserDraft((prev) => (prev ? { ...prev, [field]: value } : prev));
   };
 
+  const [semesterDraft, setSemesterDraft] = useState<string | null>(null);
+
   const saveUser = async () => {
-    if (!userDraft || editingUserId === null) return;
+    if (!userDraft || editingUserId === null || semesterDraft === null) return;
 
     const trimmedName = userDraft.name.trim();
     const trimmedStudentNumber = userDraft.studentNumber.trim();
+    const trimmedSemester = semesterDraft.trim();
 
     if (!trimmedName) {
       setUserMessage("이름을 입력해주세요.");
@@ -128,6 +335,11 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
 
     if (!/^\d{8}$/.test(trimmedStudentNumber)) {
       setUserMessage("학번은 8자리 숫자여야 합니다.");
+      return;
+    }
+
+    if (!/^\d{4}$/.test(trimmedSemester)) {
+      setUserMessage("년도는 4자리 숫자로 입력해주세요.");
       return;
     }
 
@@ -142,6 +354,7 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
           name: trimmedName,
           studentNumber: trimmedStudentNumber,
           role: userDraft.role,
+          semester: Number.parseInt(trimmedSemester, 10),
         }),
       });
 
@@ -327,7 +540,8 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
     { key: "users", label: "사용자 관리" },
     { key: "scores", label: "제출 기록" },
     { key: "notices", label: "공지 관리" },
-    { key: "logs", label: "로그" },
+    { key: "logs", label: "제출 로그" },
+    { key: "requestLogs", label: "요청 로그" },
   ];
 
   return (
@@ -352,12 +566,31 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
 
       {activeTab === "users" ? (
         <section className="space-y-4">
-          <header>
-            <h2 className="text-lg font-semibold">사용자 관리</h2>
-            <p className="text-sm text-neutral-500">이름, 학번, 역할을 수정할 수 있습니다.</p>
-            {userMessage ? (
-              <p className="mt-2 text-sm text-emerald-600">{userMessage}</p>
-            ) : null}
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">사용자 관리</h2>
+              <p className="text-sm text-neutral-500">
+                이름, 학번, 년도, 역할을 수정할 수 있습니다.
+              </p>
+              {userMessage ? (
+                <p className="mt-2 text-sm text-emerald-600">{userMessage}</p>
+              ) : null}
+            </div>
+            <label className="flex items-center gap-2 text-sm text-neutral-700">
+              <span>년도 필터</span>
+              <select
+                value={userYearFilter === "all" ? "all" : String(userYearFilter)}
+                onChange={handleUserYearFilter}
+                className="rounded-md border border-neutral-200 px-3 py-2 focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+              >
+                <option value="all">전체</option>
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}년
+                  </option>
+            ))}
+          </select>
+        </label>
           </header>
         <div className="overflow-x-auto border border-neutral-200">
           <table className="min-w-full divide-y divide-neutral-200 text-sm">
@@ -366,22 +599,23 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
                 <th className="px-4 py-3">공개 ID</th>
                 <th className="px-4 py-3">이름</th>
                 <th className="px-4 py-3">학번</th>
+                <th className="px-4 py-3">년도</th>
                 <th className="px-4 py-3">역할</th>
                 <th className="px-4 py-3">최근 로그인</th>
                 <th className="px-4 py-3 text-right">관리</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
-              {users.map((user) => {
+              {filteredUsers.map((user) => {
                 const isEditing = editingUserId === user.id && userDraft;
                 return (
                   <tr key={user.id}>
                     <td className="px-4 py-3 font-mono text-xs text-neutral-500">
                       {user.publicId}
                     </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
+                   <td className="px-4 py-3">
+                     {isEditing ? (
+                       <input
                           className="w-full rounded-md border border-neutral-200 px-2 py-1 text-sm focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
                           value={userDraft!.name}
                           onChange={(event) => updateDraft("name", event.target.value)}
@@ -399,6 +633,17 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
                         />
                       ) : (
                         user.studentNumber
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isEditing ? (
+                        <input
+                          className="w-full rounded-md border border-neutral-200 px-2 py-1 text-sm focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+                          value={semesterDraft ?? ""}
+                          onChange={(event) => setSemesterDraft(event.target.value)}
+                        />
+                      ) : (
+                        user.semester
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -448,12 +693,29 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
 
       {activeTab === "scores" ? (
         <section className="space-y-4">
-          <header>
-            <h2 className="text-lg font-semibold">제출 기록 관리</h2>
-            <p className="text-sm text-neutral-500">참가자의 제출 점수를 확인하고 삭제할 수 있습니다.</p>
-            {scoreMessage ? (
-              <p className="mt-2 text-sm text-emerald-600">{scoreMessage}</p>
-            ) : null}
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">제출 기록 관리</h2>
+              <p className="text-sm text-neutral-500">참가자의 제출 점수를 확인하고 삭제할 수 있습니다.</p>
+              {scoreMessage ? (
+                <p className="mt-2 text-sm text-emerald-600">{scoreMessage}</p>
+              ) : null}
+            </div>
+            <label className="flex items-center gap-2 text-sm text-neutral-700">
+              <span>년도 필터</span>
+              <select
+                value={scoreYearFilter === "all" ? "all" : String(scoreYearFilter)}
+                onChange={handleScoreYearFilter}
+                className="rounded-md border border-neutral-200 px-3 py-2 focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+              >
+                <option value="all">전체</option>
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}년
+                  </option>
+                ))}
+              </select>
+            </label>
           </header>
           <div className="overflow-x-auto border border-neutral-200">
             <table className="min-w-full divide-y divide-neutral-200 text-sm">
@@ -463,9 +725,11 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
                   <th className="px-4 py-3">참가자</th>
                   <th className="px-4 py-3">학번</th>
                   <th className="px-4 py-3">이름</th>
+                  <th className="px-4 py-3">년도</th>
                   <th className="px-4 py-3">프로젝트</th>
                   <th className="px-4 py-3 text-right">점수</th>
                   <th className="px-4 py-3">제출일</th>
+                  <th className="px-4 py-3 text-center">첨부</th>
                   <th className="px-4 py-3 text-right">관리</th>
                 </tr>
               </thead>
@@ -478,10 +742,25 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
                     </td>
                     <td className="px-4 py-3">{score.studentNumber}</td>
                     <td className="px-4 py-3">{score.name ?? "-"}</td>
+                    <td className="px-4 py-3">{score.userYear}</td>
                     <td className="px-4 py-3">프로젝트 {score.projectNumber}</td>
                     <td className="px-4 py-3 text-right">{score.score.toFixed(4)}</td>
                     <td className="px-4 py-3">
                       {new Date(score.evaluatedAt).toLocaleString("ko-KR")}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {score.hasFile ? (
+                        <a
+                          href={`/api/my-results/${score.id}/file`}
+                          className="inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-xs font-medium text-[#265392] transition hover:border-[#265392]"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {score.fileName ?? "파일"}
+                        </a>
+                      ) : (
+                        <span className="text-xs text-neutral-400">없음</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Button
@@ -652,9 +931,26 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
 
       {activeTab === "logs" ? (
         <section className="space-y-4">
-          <header>
-            <h2 className="text-lg font-semibold">제출 로그</h2>
-            <p className="text-sm text-neutral-500">제출 기록 생성/삭제 내역을 확인할 수 있습니다.</p>
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">제출 로그</h2>
+              <p className="text-sm text-neutral-500">제출 기록 생성/삭제 내역을 확인할 수 있습니다.</p>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-neutral-700">
+              <span>년도 필터</span>
+              <select
+                value={logYearFilter === "all" ? "all" : String(logYearFilter)}
+                onChange={handleLogYearFilter}
+                className="rounded-md border border-neutral-200 px-3 py-2 focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+              >
+                <option value="all">전체</option>
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}년
+                  </option>
+                ))}
+              </select>
+            </label>
           </header>
           <div className="overflow-x-auto border border-neutral-200">
             <table className="min-w-full divide-y divide-neutral-200 text-sm">
@@ -666,6 +962,7 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
                   <th className="px-4 py-3">대상</th>
                   <th className="px-4 py-3">프로젝트</th>
                   <th className="px-4 py-3 text-right">점수</th>
+                  <th className="px-4 py-3">년도</th>
                   <th className="px-4 py-3">시각</th>
                 </tr>
               </thead>
@@ -686,13 +983,14 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
                     <td className="px-4 py-3 text-right">
                       {typeof log.score === "number" ? log.score.toFixed(4) : "-"}
                     </td>
+                    <td className="px-4 py-3">{log.logYear ?? "-"}</td>
                     <td className="px-4 py-3 text-xs text-neutral-500">
                       {new Date(log.createdAt).toLocaleString("ko-KR")}
                     </td>
                   </tr>
                 ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
           </div>
           <div className="flex items-center justify-between text-sm text-neutral-600">
             <span>
@@ -714,6 +1012,131 @@ export default function AdminDashboard({ initialUsers, initialScores, initialNot
                 size="sm"
                 disabled={logPage >= logTotalPages}
                 onClick={() => setLogPage((prev) => Math.min(logTotalPages, prev + 1))}
+              >
+                다음
+              </Button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "requestLogs" ? (
+        <section className="space-y-4">
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold">요청 로그</h2>
+              <p className="text-sm text-neutral-500">사용자와 관리자 요청 기록을 확인할 수 있습니다.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-700">
+              <label className="flex items-center gap-2">
+                <span>년도</span>
+                <select
+                  value={requestLogYearFilter === "all" ? "all" : String(requestLogYearFilter)}
+                  onChange={handleRequestLogYearFilter}
+                  className="rounded-md border border-neutral-200 px-3 py-2 focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+                >
+                  <option value="all">전체</option>
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}년
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span>메서드</span>
+                <select
+                  value={requestLogMethodFilter}
+                  onChange={(event) =>
+                    setRequestLogMethodFilter(
+                      event.target.value === "all" ? "all" : event.target.value.toUpperCase(),
+                    )
+                  }
+                  className="rounded-md border border-neutral-200 px-3 py-2 focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+                >
+                  <option value="all">전체</option>
+                  {methodOptions.map((method) => (
+                    <option key={method} value={method}>
+                      {method}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                <span>경로</span>
+                <input
+                  type="text"
+                  value={requestLogPathFilter}
+                  onChange={(event) => setRequestLogPathFilter(event.target.value)}
+                  placeholder="/api/..."
+                  className="w-40 rounded-md border border-neutral-200 px-3 py-2 focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+                />
+              </label>
+            </div>
+          </header>
+          <div className="overflow-x-auto border border-neutral-200">
+            <table className="min-w-full divide-y divide-neutral-200 text-sm">
+              <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th className="px-4 py-3">ID</th>
+                  <th className="px-4 py-3">학번</th>
+                  <th className="px-4 py-3">경로</th>
+                  <th className="px-4 py-3">메서드</th>
+                  <th className="px-4 py-3">상태</th>
+                  <th className="px-4 py-3">메타데이터</th>
+                  <th className="px-4 py-3">년도</th>
+                  <th className="px-4 py-3">시각</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {paginatedRequestLogs.map((log) => {
+                  const metadataString =
+                    log.metadata === null
+                      ? "-"
+                      : typeof log.metadata === "string"
+                        ? log.metadata
+                        : JSON.stringify(log.metadata);
+
+                  return (
+                    <tr key={log.id}>
+                      <td className="px-4 py-3 font-mono text-xs text-neutral-500">{log.id}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-neutral-500">
+                        {log.userStudentNumber ?? ""}
+                      </td>
+                      <td className="px-4 py-3">{log.path}</td>
+                      <td className="px-4 py-3 uppercase">{log.method}</td>
+                      <td className="px-4 py-3">{log.status ?? "-"}</td>
+                      <td className="px-4 py-3 text-xs text-neutral-600 break-words">{metadataString}</td>
+                      <td className="px-4 py-3">{log.logYear ?? "-"}</td>
+                      <td className="px-4 py-3 text-xs text-neutral-500">
+                        {new Date(log.createdAt).toLocaleString("ko-KR")}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center justify-between text-sm text-neutral-600">
+            <span>
+              {requestLogPage} / {requestLogTotalPages}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={requestLogPage <= 1}
+                onClick={() => setRequestLogPage((prev) => Math.max(1, prev - 1))}
+              >
+                이전
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={requestLogPage >= requestLogTotalPages}
+                onClick={() => setRequestLogPage((prev) => Math.min(requestLogTotalPages, prev + 1))}
               >
                 다음
               </Button>

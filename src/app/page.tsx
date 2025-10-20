@@ -15,18 +15,22 @@ type RankingRow = {
   projectNumber: number;
   score: number;
   evaluatedAt: string;
+  position: number;
 };
 
 type RankingsResponse = {
   rankings: RankingRow[];
   myBestScore: { score: number; evaluatedAt: string } | null;
   projectNumber: number;
+  selectedYear: number;
+  availableYears: number[];
+  myRank: number | null;
 };
 
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ project?: string }>;
+  searchParams: Promise<{ project?: string; year?: string }>;
 }) {
   cleanupExpiredSessions();
   const cookieStore = await cookies();
@@ -56,6 +60,11 @@ export default async function Home({
     Number.isInteger(parsedProject) && parsedProject >= 1 && parsedProject <= 4
       ? parsedProject
       : 1;
+  const yearParam = resolvedSearchParams?.year;
+  const requestedYear =
+    yearParam && /^\d{4}$/.test(yearParam)
+      ? Number.parseInt(yearParam, 10)
+      : undefined;
 
   const cookieHeader = cookieStore
     .getAll()
@@ -64,7 +73,12 @@ export default async function Home({
 
   const baseUrl = getBaseUrl();
 
-  const response = await fetch(`${baseUrl}/api/rankings?project=${projectNumber}`, {
+  const queryParams = new URLSearchParams({ project: String(projectNumber) });
+  if (typeof requestedYear === "number") {
+    queryParams.set("year", String(requestedYear));
+  }
+
+  const response = await fetch(`${baseUrl}/api/rankings?${queryParams.toString()}`, {
     headers: {
       Cookie: cookieHeader,
     },
@@ -82,6 +96,11 @@ export default async function Home({
   const data = (await response.json()) as RankingsResponse;
   const rankings = data.rankings;
   const myBestScore = data.myBestScore;
+  const selectedYear = data.selectedYear;
+  const availableYears = data.availableYears;
+  const myRank = data.myRank;
+  const selectedYearLabel = `${selectedYear}년`;
+  const activeProjectNumber = data.projectNumber;
 
   return (
     <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10">
@@ -94,14 +113,23 @@ export default async function Home({
       />
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <h2 className="text-lg font-semibold">Top 10 랭킹 보드</h2>
+          <h2 className="text-lg font-semibold">
+            전체 등수 랭킹 보드{" "}
+            <span className="text-sm font-normal text-neutral-500">
+              ({selectedYearLabel})
+            </span>
+          </h2>
           <div className="flex items-center gap-2 justify-between">
             {projects.map((project) => (
               <Link
                 key={project.number}
-                href={`/?project=${project.number}`}
+                href={`/?${(() => {
+                  const params = new URLSearchParams({ project: String(project.number) });
+                  params.set("year", String(selectedYear));
+                  return params.toString();
+                })()}`}
                 className={`rounded-md px-3 py-1 text-sm font-medium transition ${
-                  project.number === projectNumber
+                  project.number === activeProjectNumber
                     ? "bg-[#265392] text-white shadow"
                     : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
                 }`}
@@ -117,6 +145,29 @@ export default async function Home({
             내 결과 관리하기
           </Link>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {availableYears.map((year) => {
+            const params = new URLSearchParams({
+              project: String(activeProjectNumber),
+              year: String(year),
+            });
+            const href = `/?${params.toString()}`;
+            const isActive = year === selectedYear;
+            return (
+              <Link
+                key={year}
+                href={href}
+                className={`rounded-md px-3 py-1 text-sm font-medium transition ${
+                  isActive
+                    ? "bg-[#1f4275] text-white shadow"
+                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                }`}
+              >
+                {year}년
+              </Link>
+            );
+          })}
+        </div>
         <div className="overflow-hidden rounded-lg border">
           <table className="min-w-full divide-y divide-neutral-200 bg-white text-sm">
             <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
@@ -124,35 +175,27 @@ export default async function Home({
                 <th scope="col" className="px-4 py-3">순위</th>
                 <th scope="col" className="px-4 py-3">익명 ID</th>
                 <th scope="col" className="px-4 py-3 text-right">점수</th>
-                <th scope="col" className="px-4 py-3">기록일</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100 text-neutral-700">
               {rankings.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-neutral-500">
+                  <td colSpan={3} className="px-4 py-6 text-center text-neutral-500">
                     아직 등록된 랭킹 정보가 없습니다.
                   </td>
                 </tr>
               ) : (
-                rankings.map((row, index) => {
+                rankings.map((row) => {
                   const isMyRecord = row.userId === sessionUser.id;
-                  const formattedDate = new Date(row.evaluatedAt).toLocaleString("ko-KR", {
-                    month: "2-digit",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
 
                   return (
                     <tr
                       key={row.id}
                       className={isMyRecord ? "bg-blue-50/60 font-semibold text-[#1f4275]" : ""}
                     >
-                      <td className="px-4 py-3 font-semibold">{index + 1}</td>
+                      <td className="px-4 py-3 font-semibold">{row.position}</td>
                       <td className="px-4 py-3 text-neutral-500">{row.publicId}</td>
                       <td className="px-4 py-3 text-right">{row.score.toFixed(4)}</td>
-                      <td className="px-4 py-3">{formattedDate}</td>
                     </tr>
                   );
                 })
@@ -162,12 +205,12 @@ export default async function Home({
         </div>
         {myBestScore ? (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-            나의 최고 점수는 {myBestScore.score.toFixed(4)}점이며,{" "}
-            {new Date(myBestScore.evaluatedAt).toLocaleString("ko-KR")}에 기록되었습니다.
+            선택한 {selectedYearLabel} 기준 나의 최고 점수는 {myBestScore.score.toFixed(4)}점이며{" "}
+            {typeof myRank === "number" ? `현재 ${myRank}위입니다.` : "현재 순위를 확인할 수 없습니다."}
           </div>
         ) : (
           <div className="rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
-            아직 등록된 점수가 없습니다. 점수를 제출하고 기록을 만들어 보세요!
+            선택한 {selectedYearLabel}에는 아직 등록된 점수가 없습니다. 점수를 제출하고 기록을 만들어 보세요!
           </div>
         )}
       </div>

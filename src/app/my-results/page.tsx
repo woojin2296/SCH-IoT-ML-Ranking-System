@@ -14,6 +14,9 @@ type UserScoreRow = {
   projectNumber: number;
   score: number;
   evaluatedAt: string;
+  fileName: string | null;
+  fileSize: number | null;
+  hasFile: boolean;
 };
 
 type MyResultsResponse = {

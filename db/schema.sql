@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT,
   public_id TEXT NOT NULL UNIQUE,
   role TEXT NOT NULL DEFAULT 'user',
+  semester INTEGER NOT NULL DEFAULT 2025,
   last_login_at DATETIME,
   is_active INTEGER NOT NULL DEFAULT 1,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -38,6 +39,10 @@ CREATE TABLE IF NOT EXISTS evaluation_scores (
   user_id INTEGER NOT NULL,
   project_number INTEGER NOT NULL CHECK(project_number BETWEEN 1 AND 4),
   score REAL NOT NULL,
+  file_path TEXT,
+  file_name TEXT,
+  file_type TEXT,
+  file_size INTEGER,
   evaluated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -55,6 +60,20 @@ BEGIN
   SET updated_at = CURRENT_TIMESTAMP
   WHERE id = NEW.id;
 END;
+
+CREATE TABLE IF NOT EXISTS request_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  path TEXT NOT NULL,
+  method TEXT NOT NULL,
+  status INTEGER,
+  metadata TEXT,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_request_logs_user_id ON request_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_request_logs_created_at ON request_logs(created_at);
 
 CREATE TABLE IF NOT EXISTS evaluation_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

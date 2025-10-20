@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { unlink } from "fs/promises";
 
 import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-guard";
-import { logEvaluationChange } from "@/lib/logs";
+import { logEvaluationChange, logUserRequest } from "@/lib/logs";
 
 export async function GET() {
   const adminUser = await requireAdmin();
 
   if (!adminUser) {
+    logUserRequest({
+      path: "/api/admin/scores",
+      method: "GET",
+      status: 401,
+      metadata: { reason: "unauthorized" },
+    });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -23,7 +30,10 @@ export async function GET() {
           u.name,
           es.project_number AS projectNumber,
           es.score,
-          es.evaluated_at AS evaluatedAt
+          es.evaluated_at AS evaluatedAt,
+          es.file_name AS fileName,
+          es.file_size AS fileSize,
+          CASE WHEN es.file_path IS NOT NULL THEN 1 ELSE 0 END AS hasFile
         FROM evaluation_scores es
         INNER JOIN users u ON u.id = es.user_id
         ORDER BY es.evaluated_at DESC
@@ -31,15 +41,42 @@ export async function GET() {
     )
     .all();
 
-  return NextResponse.json({ scores });
+  const normalizedScores = (scores as Array<Record<string, unknown>>).map((score) => ({
+    ...score,
+    hasFile: Boolean(score.hasFile),
+  }));
+
+  logUserRequest({
+    userId: adminUser.id,
+    path: "/api/admin/scores",
+    method: "GET",
+    status: 200,
+  });
+
+  return NextResponse.json({ scores: normalizedScores });
 }
 
 export async function DELETE(request: NextRequest) {
   const adminUser = await requireAdmin();
 
   if (!adminUser) {
+    logUserRequest({
+      path: "/api/admin/scores",
+      method: request.method,
+      status: 401,
+      metadata: { reason: "unauthorized" },
+    });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const logRequest = (status: number, metadata?: Record<string, unknown>) =>
+    logUserRequest({
+      userId: adminUser.id,
+      path: "/api/admin/scores",
+      method: "DELETE",
+      status,
+      metadata,
+    });
 
   type Payload = {
     id?: number;
@@ -55,6 +92,7 @@ export async function DELETE(request: NextRequest) {
   const { id } = payload;
 
   if (typeof id !== "number" || !Number.isInteger(id) || id <= 0) {
+    logRequest(400, { reason: "invalid_id", id });
     return NextResponse.json({ error: "유효한 기록 ID가 필요합니다." }, { status: 400 });
   }
 
@@ -67,14 +105,16 @@ export async function DELETE(request: NextRequest) {
           es.id,
           es.user_id AS userId,
           es.project_number AS projectNumber,
-          es.score
+          es.score,
+          es.file_path AS filePath
         FROM evaluation_scores es
         WHERE es.id = ?
       `,
     )
-    .get(id) as { id: number; userId: number; projectNumber: number; score: number } | undefined;
+    .get(id) as { id: number; userId: number; projectNumber: number; score: number; filePath: string | null } | undefined;
 
   if (!existing) {
+    logRequest(404, { reason: "not_found", id });
     return NextResponse.json({ error: "삭제할 기록을 찾을 수 없습니다." }, { status: 404 });
   }
 
@@ -88,6 +128,14 @@ export async function DELETE(request: NextRequest) {
 
     stmt.run(id);
 
+    if (existing.filePath) {
+      try {
+        await unlink(existing.filePath);
+      } catch (unlinkError) {
+        console.error("Failed to delete attachment", unlinkError);
+      }
+    }
+
     logEvaluationChange({
       actorUserId: adminUser.id,
       action: "delete",
@@ -98,9 +146,12 @@ export async function DELETE(request: NextRequest) {
       payload: { source: "admin-delete" },
     });
 
+    logRequest(200, { action: "delete", scoreId: existing.id });
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("Failed to delete evaluation score", error);
+    logRequest(500, { action: "delete", scoreId: existing.id, reason: "delete_failed" });
     return NextResponse.json({ error: "결과 삭제 중 오류가 발생했습니다." }, { status: 500 });
   }
 }
