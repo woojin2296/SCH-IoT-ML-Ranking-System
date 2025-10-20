@@ -77,8 +77,18 @@ export default function SubmitResultForm() {
       });
 
       if (!response.ok) {
-        const data = (await response.json()) as { error?: string };
-        throw new Error(data?.error ?? "제출에 실패했습니다.");
+        let message = "제출에 실패했습니다.";
+        try {
+          const data = (await response.json()) as { error?: string };
+          if (data?.error) {
+            message = data.error;
+          }
+        } catch {
+          // ignore parse errors, fallback message will be used
+        }
+        setStatus("error");
+        setError(message);
+        return;
       }
 
       setStatus("success");

@@ -42,6 +42,9 @@ type Props = {
   availableYears: number[];
   selectedYear: number;
   requestMethodOptions: string[];
+  initialRankingRecords: RankingRecord[];
+  rankingDefaultFrom: string;
+  rankingDefaultTo: string;
 };
 
 const ROLE_OPTIONS = [
@@ -77,6 +80,18 @@ type RequestLogRow = {
   logYear: number | null;
 };
 
+type RankingRecord = {
+  id: number;
+  position: number;
+  studentNumber: string;
+  name: string | null;
+  score: number;
+  evaluatedAt: string;
+  fileName: string | null;
+  fileSize: number | null;
+  hasFile: boolean;
+};
+
 export default function AdminDashboard({
   initialUsers,
   initialScores,
@@ -86,6 +101,9 @@ export default function AdminDashboard({
   availableYears,
   selectedYear,
   requestMethodOptions,
+  initialRankingRecords,
+  rankingDefaultFrom,
+  rankingDefaultTo,
 }: Props) {
   const [activeTab, setActiveTab] = useState<"users" | "scores" | "notices" | "logs" | "requestLogs">("users");
   const [users, setUsers] = useState(initialUsers);
@@ -93,8 +111,11 @@ export default function AdminDashboard({
   const [notices, setNotices] = useState(initialNotices);
   const [logs, setLogs] = useState(initialLogs);
   const [requestLogs, setRequestLogs] = useState(initialRequestLogs);
+  const [rankingRecords, setRankingRecords] = useState<RankingRecord[]>(initialRankingRecords);
   const [scorePage, setScorePage] = useState(1);
   const [logPage, setLogPage] = useState(1);
+  const [rankingLoading, setRankingLoading] = useState(false);
+  const [rankingError, setRankingError] = useState<string | null>(null);
   const [requestLogPage, setRequestLogPage] = useState(1);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [userDraft, setUserDraft] = useState<{ name: string; studentNumber: string; role: string } | null>(null);
@@ -116,13 +137,15 @@ export default function AdminDashboard({
   const [userYearFilter, setUserYearFilter] = useState<number | "all">(initialYearFilter);
   const [scoreYearFilter, setScoreYearFilter] = useState<number | "all">(initialYearFilter);
   const [logYearFilter, setLogYearFilter] = useState<number | "all">(initialYearFilter);
-  const [requestLogYearFilter, setRequestLogYearFilter] = useState<number | "all">(initialYearFilter);
   const [requestLogPathFilter, setRequestLogPathFilter] = useState("");
   const [requestLogMethodFilter, setRequestLogMethodFilter] = useState<string | "all">("all");
   const [yearOptions, setYearOptions] = useState(() => initialYearOptions);
   const [methodOptions, setMethodOptions] = useState(() =>
     requestMethodOptions.length ? requestMethodOptions : ["GET", "POST"],
   );
+  const [rankingProject, setRankingProject] = useState<number>(1);
+  const [rankingFrom, setRankingFrom] = useState(() => rankingDefaultFrom.slice(0, 10));
+  const [rankingTo, setRankingTo] = useState(() => rankingDefaultTo.slice(0, 10));
 
   useEffect(() => {
     setUsers(initialUsers);
@@ -147,6 +170,45 @@ export default function AdminDashboard({
     setRequestLogs(initialRequestLogs);
     setRequestLogPage(1);
   }, [initialRequestLogs]);
+
+  useEffect(() => {
+    setRankingRecords(initialRankingRecords);
+    setRankingProject(1);
+    setRankingFrom(rankingDefaultFrom.slice(0, 10));
+    setRankingTo(rankingDefaultTo.slice(0, 10));
+  }, [initialRankingRecords, rankingDefaultFrom, rankingDefaultTo]);
+
+  const fetchRankingRecords = async (project: number, fromDate: string, toDate: string) => {
+    setRankingLoading(true);
+    setRankingError(null);
+    try {
+      const params = new URLSearchParams({ project: String(project) });
+      if (fromDate) params.set("from", fromDate);
+      if (toDate) params.set("to", toDate);
+      const response = await fetch(`/api/admin/rankings?${params.toString()}`, {
+        method: "GET",
+        cache: "no-store",
+        credentials: "include",
+      });
+      const data = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        rankings?: RankingRecord[];
+      };
+      if (!response.ok || !data.rankings) {
+        throw new Error(data.error ?? "랭킹 데이터를 불러오지 못했습니다.");
+      }
+      setRankingRecords(data.rankings);
+    } catch (error) {
+      console.error(error);
+      setRankingError(error instanceof Error ? error.message : "랭킹 정보를 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setRankingLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRankingRecords(1, rankingDefaultFrom, rankingDefaultTo);
+  }, [rankingDefaultFrom, rankingDefaultTo]);
 
   useEffect(() => {
     const methods = new Set<string>(requestMethodOptions.map((method) => method.toUpperCase()));
@@ -187,13 +249,10 @@ export default function AdminDashboard({
     if (logYearFilter !== "all" && !yearOptions.includes(logYearFilter)) {
       setLogYearFilter("all");
     }
-    if (requestLogYearFilter !== "all" && !yearOptions.includes(requestLogYearFilter)) {
-      setRequestLogYearFilter("all");
-    }
     if (requestLogMethodFilter !== "all" && !methodOptions.includes(requestLogMethodFilter)) {
       setRequestLogMethodFilter("all");
     }
-  }, [yearOptions, methodOptions, userYearFilter, scoreYearFilter, logYearFilter, requestLogYearFilter, requestLogMethodFilter]);
+  }, [yearOptions, methodOptions, userYearFilter, scoreYearFilter, logYearFilter, requestLogMethodFilter]);
 
   useEffect(() => {
     setScorePage(1);
@@ -202,10 +261,6 @@ export default function AdminDashboard({
   useEffect(() => {
     setLogPage(1);
   }, [logYearFilter]);
-
-  useEffect(() => {
-    setRequestLogPage(1);
-  }, [requestLogYearFilter]);
 
   useEffect(() => {
     setRequestLogPage(1);
@@ -230,10 +285,19 @@ export default function AdminDashboard({
     setLogYearFilter(value === "all" ? "all" : Number.parseInt(value, 10));
   };
 
-  const handleRequestLogYearFilter = (event: ChangeEvent<HTMLSelectElement>) => {
-    const value = event.target.value;
-    setRequestLogYearFilter(value === "all" ? "all" : Number.parseInt(value, 10));
-  };
+  const applyRankingFilter = () => {
+    if (!rankingFrom || !rankingTo) {
+      setRankingError("날짜 범위를 모두 선택해주세요.");
+      return;
+    }
+
+  if (new Date(rankingFrom) > new Date(rankingTo)) {
+    setRankingError("시작 날짜가 종료 날짜보다 클 수 없습니다.");
+    return;
+  }
+
+  fetchRankingRecords(rankingProject, `${rankingFrom}T00:00:00`, `${rankingTo}T23:59:59`);
+};
 
   const filteredUsers = useMemo(() => {
     if (userYearFilter === "all") {
@@ -258,14 +322,13 @@ export default function AdminDashboard({
 
   const filteredRequestLogs = useMemo(() => {
     return requestLogs.filter((log) => {
-      const matchesYear = requestLogYearFilter === "all" || log.logYear === requestLogYearFilter;
       const matchesPath = requestLogPathFilter.trim().length
         ? log.path.toLowerCase().includes(requestLogPathFilter.trim().toLowerCase())
         : true;
       const matchesMethod = requestLogMethodFilter === "all" || log.method === requestLogMethodFilter;
-      return matchesYear && matchesPath && matchesMethod;
+      return matchesPath && matchesMethod;
     });
-  }, [requestLogs, requestLogYearFilter, requestLogPathFilter, requestLogMethodFilter]);
+  }, [requestLogs, requestLogPathFilter, requestLogMethodFilter]);
 
   const scoreTotalPages = Math.max(1, Math.ceil(filteredScores.length / pageSize));
   const logTotalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
@@ -540,6 +603,7 @@ export default function AdminDashboard({
     { key: "users", label: "사용자 관리" },
     { key: "scores", label: "제출 기록" },
     { key: "notices", label: "공지 관리" },
+    { key: "rankingRecords", label: "랭킹 기록" },
     { key: "logs", label: "제출 로그" },
     { key: "requestLogs", label: "요청 로그" },
   ];
@@ -718,6 +782,9 @@ export default function AdminDashboard({
             </label>
           </header>
           <div className="overflow-x-auto border border-neutral-200">
+            {rankingLoading ? (
+              <p className="px-4 py-2 text-xs text-neutral-500">랭킹 데이터를 불러오는 중입니다...</p>
+            ) : null}
             <table className="min-w-full divide-y divide-neutral-200 text-sm">
               <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
                 <tr>
@@ -801,6 +868,108 @@ export default function AdminDashboard({
                 다음
               </Button>
             </div>
+          </div>
+        </section>
+      ) : null}
+
+      {activeTab === "rankingRecords" ? (
+        <section className="space-y-4">
+          <header className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold">랭킹 기록</h2>
+              <p className="text-sm text-neutral-500">선택한 날짜 범위와 프로젝트에 대한 상위 랭킹을 확인할 수 있습니다.</p>
+              {rankingError ? (
+                <p className="text-sm text-destructive">{rankingError}</p>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-end gap-3 text-sm text-neutral-700">
+              <label className="flex flex-col gap-1">
+                <span>프로젝트</span>
+                <select
+                  value={rankingProject}
+                  onChange={(event) => setRankingProject(Number.parseInt(event.target.value, 10))}
+                  className="rounded-md border border-neutral-200 px-3 py-2 focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+                >
+                  {[1, 2, 3, 4].map((project) => (
+                    <option key={project} value={project}>
+                      프로젝트 {project}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span>시작일</span>
+                <input
+                  type="date"
+                  value={rankingFrom}
+                  max={rankingTo}
+                  onChange={(event) => setRankingFrom(event.target.value)}
+                  className="rounded-md border border-neutral-200 px-3 py-2 focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span>종료일</span>
+                <input
+                  type="date"
+                  value={rankingTo}
+                  min={rankingFrom}
+                  onChange={(event) => setRankingTo(event.target.value)}
+                  className="rounded-md border border-neutral-200 px-3 py-2 focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+                />
+              </label>
+              <Button type="button" className="bg-[#265392]" onClick={applyRankingFilter} disabled={rankingLoading}>
+                {rankingLoading ? "불러오는 중..." : "적용"}
+              </Button>
+            </div>
+          </header>
+          <div className="overflow-x-auto border border-neutral-200">
+            <table className="min-w-full divide-y divide-neutral-200 text-sm">
+              <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
+                <tr>
+                  <th className="px-4 py-3">순위</th>
+                  <th className="px-4 py-3">학번</th>
+                  <th className="px-4 py-3">이름</th>
+                  <th className="px-4 py-3 text-right">점수</th>
+                  <th className="px-4 py-3 text-center">첨부</th>
+                  <th className="px-4 py-3">제출일</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {rankingRecords.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6 text-center text-neutral-500">
+                      선택한 조건에 해당하는 랭킹 기록이 없습니다.
+                    </td>
+                  </tr>
+                ) : (
+                  rankingRecords.map((record) => (
+                    <tr key={record.id}>
+                      <td className="px-4 py-3 font-semibold">{record.position}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-neutral-600">{record.studentNumber}</td>
+                      <td className="px-4 py-3">{record.name ?? "-"}</td>
+                      <td className="px-4 py-3 text-right">{record.score.toFixed(4)}</td>
+                      <td className="px-4 py-3 text-center">
+                        {record.hasFile ? (
+                          <a
+                            href={`/api/my-results/${record.id}/file`}
+                            className="inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-xs font-medium text-[#265392] transition hover:border-[#265392]"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {record.fileName ?? "파일"}
+                          </a>
+                        ) : (
+                          <span className="text-xs text-neutral-400">없음</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-neutral-500">
+                        {new Date(record.evaluatedAt).toLocaleString("ko-KR")}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
       ) : null}
@@ -1029,21 +1198,6 @@ export default function AdminDashboard({
             </div>
             <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-700">
               <label className="flex items-center gap-2">
-                <span>년도</span>
-                <select
-                  value={requestLogYearFilter === "all" ? "all" : String(requestLogYearFilter)}
-                  onChange={handleRequestLogYearFilter}
-                  className="rounded-md border border-neutral-200 px-3 py-2 focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
-                >
-                  <option value="all">전체</option>
-                  {yearOptions.map((year) => (
-                    <option key={year} value={year}>
-                      {year}년
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex items-center gap-2">
                 <span>메서드</span>
                 <select
                   value={requestLogMethodFilter}
@@ -1084,7 +1238,6 @@ export default function AdminDashboard({
                   <th className="px-4 py-3">메서드</th>
                   <th className="px-4 py-3">상태</th>
                   <th className="px-4 py-3">메타데이터</th>
-                  <th className="px-4 py-3">년도</th>
                   <th className="px-4 py-3">시각</th>
                 </tr>
               </thead>
@@ -1107,7 +1260,6 @@ export default function AdminDashboard({
                       <td className="px-4 py-3 uppercase">{log.method}</td>
                       <td className="px-4 py-3">{log.status ?? "-"}</td>
                       <td className="px-4 py-3 text-xs text-neutral-600 break-words">{metadataString}</td>
-                      <td className="px-4 py-3">{log.logYear ?? "-"}</td>
                       <td className="px-4 py-3 text-xs text-neutral-500">
                         {new Date(log.createdAt).toLocaleString("ko-KR")}
                       </td>

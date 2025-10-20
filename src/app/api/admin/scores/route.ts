@@ -4,6 +4,7 @@ import { unlink } from "fs/promises";
 import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-guard";
 import { logEvaluationChange, logUserRequest } from "@/lib/logs";
+import { resolveStoredFilePath } from "@/lib/uploads";
 
 export async function GET() {
   const adminUser = await requireAdmin();
@@ -128,9 +129,10 @@ export async function DELETE(request: NextRequest) {
 
     stmt.run(id);
 
-    if (existing.filePath) {
+    const absoluteStoredPath = resolveStoredFilePath(existing.filePath ?? null);
+    if (absoluteStoredPath) {
       try {
-        await unlink(existing.filePath);
+        await unlink(absoluteStoredPath);
       } catch (unlinkError) {
         console.error("Failed to delete attachment", unlinkError);
       }
