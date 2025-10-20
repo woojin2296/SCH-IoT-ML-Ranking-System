@@ -2,22 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-guard";
-import { logUserRequest } from "@/lib/logs";
+import { createRequestLogger } from "@/lib/request-logger";
 
 const ROLE_SET = new Set(["user", "admin"]);
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const baseLogger = createRequestLogger(request, request.nextUrl.pathname, request.method);
   const adminUser = await requireAdmin();
 
   if (!adminUser) {
-    logUserRequest({
-      path: "/api/admin/users",
-      method: "GET",
-      status: 401,
-      metadata: { reason: "unauthorized" },
-    });
+    baseLogger(401, { reason: "unauthorized" });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const logRequest = createRequestLogger(request, request.nextUrl.pathname, request.method, adminUser.id);
 
   const db = getDb();
   const users = db
@@ -42,29 +40,21 @@ export async function GET() {
     )
     .all();
 
-  logUserRequest({
-    userId: adminUser.id,
-    path: "/api/admin/users",
-    method: "GET",
-    status: 200,
-    metadata: { count: users.length },
-  });
+  logRequest(200, { count: users.length });
 
   return NextResponse.json({ users });
 }
 
 export async function PATCH(request: NextRequest) {
+  const baseLogger = createRequestLogger(request, request.nextUrl.pathname, request.method);
   const adminUser = await requireAdmin();
 
   if (!adminUser) {
-    logUserRequest({
-      path: "/api/admin/users",
-      method: request.method,
-      status: 401,
-      metadata: { reason: "unauthorized" },
-    });
+    baseLogger(401, { reason: "unauthorized" });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const logRequest = createRequestLogger(request, request.nextUrl.pathname, request.method, adminUser.id);
 
   type Payload = {
     id?: number;
@@ -78,26 +68,14 @@ export async function PATCH(request: NextRequest) {
   try {
     payload = (await request.json()) as Payload;
   } catch {
-    logUserRequest({
-      userId: adminUser.id,
-      path: "/api/admin/users",
-      method: request.method,
-      status: 400,
-      metadata: { reason: "invalid_json" },
-    });
+    logRequest(400, { reason: "invalid_json" });
     return NextResponse.json({ error: "잘못된 요청 형식입니다." }, { status: 400 });
   }
 
   const { id, name, studentNumber, role } = payload;
 
   if (typeof id !== "number" || !Number.isInteger(id) || id <= 0) {
-    logUserRequest({
-      userId: adminUser.id,
-      path: "/api/admin/users",
-      method: request.method,
-      status: 400,
-      metadata: { reason: "invalid_id", id },
-    });
+    logRequest(400, { reason: "invalid_id", id });
     return NextResponse.json({ error: "유효한 사용자 ID가 필요합니다." }, { status: 400 });
   }
 
@@ -107,35 +85,17 @@ export async function PATCH(request: NextRequest) {
   const semesterValue = typeof payload.semester === "number" ? payload.semester : undefined;
 
   if (!trimmedName) {
-    logUserRequest({
-      userId: adminUser.id,
-      path: "/api/admin/users",
-      method: request.method,
-      status: 400,
-      metadata: { reason: "missing_name", id },
-    });
+    logRequest(400, { reason: "missing_name", id });
     return NextResponse.json({ error: "이름을 입력해주세요." }, { status: 400 });
   }
 
   if (!trimmedStudentNumber || !/^\d{8}$/.test(trimmedStudentNumber)) {
-    logUserRequest({
-      userId: adminUser.id,
-      path: "/api/admin/users",
-      method: request.method,
-      status: 400,
-      metadata: { reason: "invalid_student_number", id },
-    });
+    logRequest(400, { reason: "invalid_student_number", id });
     return NextResponse.json({ error: "학번은 8자리 숫자여야 합니다." }, { status: 400 });
   }
 
   if (!normalizedRole || !ROLE_SET.has(normalizedRole)) {
-    logUserRequest({
-      userId: adminUser.id,
-      path: "/api/admin/users",
-      method: request.method,
-      status: 400,
-      metadata: { reason: "invalid_role", id },
-    });
+    logRequest(400, { reason: "invalid_role", id });
     return NextResponse.json({ error: "역할 정보가 올바르지 않습니다." }, { status: 400 });
   }
 
@@ -148,13 +108,7 @@ export async function PATCH(request: NextRequest) {
     normalizedSemester < 2000 ||
     normalizedSemester > currentYear + 10
   ) {
-    logUserRequest({
-      userId: adminUser.id,
-      path: "/api/admin/users",
-      method: request.method,
-      status: 400,
-      metadata: { reason: "invalid_semester", id, semester: normalizedSemester },
-    });
+    logRequest(400, { reason: "invalid_semester", id, semester: normalizedSemester });
     return NextResponse.json({ error: "년도는 4자리 숫자로 입력해주세요." }, { status: 400 });
   }
 
@@ -178,13 +132,7 @@ export async function PATCH(request: NextRequest) {
     );
 
     if (result.changes === 0) {
-      logUserRequest({
-        userId: adminUser.id,
-        path: "/api/admin/users",
-        method: request.method,
-        status: 404,
-        metadata: { reason: "not_found", id },
-      });
+      logRequest(404, { reason: "not_found", id });
       return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
     }
 
@@ -210,35 +158,17 @@ export async function PATCH(request: NextRequest) {
       )
       .get(id);
 
-    logUserRequest({
-      userId: adminUser.id,
-      path: "/api/admin/users",
-      method: request.method,
-      status: 200,
-      metadata: { id },
-    });
+    logRequest(200, { id });
 
     return NextResponse.json({ user });
   } catch (error) {
     if (error instanceof Error && error.message.includes("UNIQUE")) {
-      logUserRequest({
-        userId: adminUser.id,
-        path: "/api/admin/users",
-        method: request.method,
-        status: 409,
-        metadata: { reason: "duplicate_student_number", id },
-      });
+      logRequest(409, { reason: "duplicate_student_number", id });
       return NextResponse.json({ error: "중복된 학번입니다." }, { status: 409 });
     }
 
     console.error("Failed to update user", error);
-    logUserRequest({
-      userId: adminUser.id,
-      path: "/api/admin/users",
-      method: request.method,
-      status: 500,
-      metadata: { id, reason: "update_failed" },
-    });
+    logRequest(500, { id, reason: "update_failed" });
     return NextResponse.json({ error: "사용자 수정 중 오류가 발생했습니다." }, { status: 500 });
   }
 }

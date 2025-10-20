@@ -69,22 +69,48 @@ export default async function MyResultsPage({
   const baseUrl = getBaseUrl();
   const query = projectNumber ? `?project=${projectNumber}` : "";
 
-  const response = await fetch(`${baseUrl}/api/my-results${query}`, {
-    headers: {
-      Cookie: cookieHeader,
-    },
-    cache: "no-store",
-  });
+  let data: MyResultsResponse | null = null;
+  try {
+    const response = await fetch(`${baseUrl}/api/my-results${query}`, {
+      headers: {
+        Cookie: cookieHeader,
+      },
+      cache: "no-store",
+    });
 
-  if (response.status === 401) {
-    redirect("/login");
+    if (response.status === 401) {
+      redirect("/login");
+    }
+
+    if (!response.ok) {
+      const message = `개인 결과를 불러오는 중 오류가 발생했습니다. (status: ${response.status})`;
+      console.error(message);
+      throw new Error(message);
+    }
+
+    data = (await response.json()) as MyResultsResponse;
+  } catch (error) {
+    console.error("Failed to fetch my results", error);
+    const displayName = sessionUser.name?.trim()?.length
+      ? sessionUser.name
+      : `참가자 ${sessionUser.publicId}`;
+    const notices = getActiveNotices();
+    return (
+      <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10">
+        <AppHero
+          alerts={
+            notices.length
+              ? notices.map((item) => item.message)
+              : [`${displayName}님, 현재 개인 제출 기록을 불러올 수 없습니다. 잠시 후 다시 시도해주세요.`]
+          }
+        />
+        <div className="mx-auto w-full max-w-3xl rounded-lg border border-neutral-200 bg-white px-6 py-4 text-center text-sm text-neutral-600 shadow-sm">
+          데이터 로딩 중 오류가 발생했습니다. 네트워크 상태를 확인하거나 문제가 지속될 경우 관리자에게 문의해주세요.
+        </div>
+      </div>
+    );
   }
 
-  if (!response.ok) {
-    throw new Error("개인 결과를 불러오는데 실패했습니다.");
-  }
-
-  const data = (await response.json()) as MyResultsResponse;
   const scores = data.results;
 
   const displayName = sessionUser.name?.trim()?.length

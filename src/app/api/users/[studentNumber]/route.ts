@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getDb } from "@/lib/db";
 import { logUserRequest } from "@/lib/logs";
+import { getRequestIp } from "@/lib/request";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams,
 ) {
+  const clientIp = getRequestIp(request);
   try {
     const { studentNumber } = await params;
     const normalizedStudentNumber = studentNumber?.trim();
@@ -25,6 +27,7 @@ export async function GET(
         method: request.method,
         status: 400,
         metadata: { reason: "invalid_student_number", studentNumber },
+        ipAddress: clientIp,
       });
       return NextResponse.json(
         { error: "유효하지 않은 학번 형식입니다." },
@@ -61,6 +64,7 @@ export async function GET(
       method: request.method,
       status: 200,
       metadata: { found: Boolean(record) },
+      ipAddress: clientIp,
     });
 
     return NextResponse.json({
@@ -75,6 +79,7 @@ export async function GET(
       method: request.method,
       status: 500,
       metadata: { reason: "internal_error" },
+      ipAddress: clientIp,
     });
     return NextResponse.json(
       { error: "Internal Server Error" },

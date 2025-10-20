@@ -5,19 +5,24 @@ import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-guard";
 import { logEvaluationChange, logUserRequest } from "@/lib/logs";
 import { resolveStoredFilePath } from "@/lib/uploads";
+import { getRequestIp } from "@/lib/request";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const adminUser = await requireAdmin();
 
   if (!adminUser) {
+    const clientIp = getRequestIp(request);
     logUserRequest({
       path: "/api/admin/scores",
       method: "GET",
       status: 401,
       metadata: { reason: "unauthorized" },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const clientIp = getRequestIp(request);
 
   const db = getDb();
   const scores = db
@@ -52,6 +57,7 @@ export async function GET() {
     path: "/api/admin/scores",
     method: "GET",
     status: 200,
+    ipAddress: clientIp,
   });
 
   return NextResponse.json({ scores: normalizedScores });
@@ -66,9 +72,12 @@ export async function DELETE(request: NextRequest) {
       method: request.method,
       status: 401,
       metadata: { reason: "unauthorized" },
+      ipAddress: getRequestIp(request),
     });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const clientIp = getRequestIp(request);
 
   const logRequest = (status: number, metadata?: Record<string, unknown>) =>
     logUserRequest({
@@ -77,6 +86,7 @@ export async function DELETE(request: NextRequest) {
       method: "DELETE",
       status,
       metadata,
+      ipAddress: clientIp,
     });
 
   type Payload = {

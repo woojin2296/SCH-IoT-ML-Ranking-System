@@ -7,7 +7,8 @@ import {
   createSession,
   revokeSessionsForUser,
 } from "@/lib/session";
-import { logUserRequest } from "@/lib/logs";
+import { createRequestLogger } from "@/lib/request-logger";
+import { createRequestLogger } from "@/lib/request-logger";
 
 export const dynamic = "force-dynamic";
 
@@ -32,16 +33,12 @@ type UserRow = {
 
 export async function POST(request: NextRequest) {
   let payload: LoginPayload;
+  const logRequest = createRequestLogger(request, "/api/login", request.method);
 
   try {
     payload = (await request.json()) as LoginPayload;
   } catch {
-    logUserRequest({
-      path: "/api/login",
-      method: request.method,
-      status: 400,
-      metadata: { reason: "invalid_json" },
-    });
+    logRequest(400, { reason: "invalid_json" });
     return NextResponse.json(
       { error: "잘못된 요청 형식입니다." },
       { status: 400 },
@@ -52,12 +49,7 @@ export async function POST(request: NextRequest) {
   const password = payload.password;
 
   if (!studentNumber || !password) {
-    logUserRequest({
-      path: "/api/login",
-      method: request.method,
-      status: 400,
-      metadata: { reason: "missing_fields", studentNumber },
-    });
+    logRequest(400, { reason: "missing_fields", studentNumber });
     return NextResponse.json(
       { error: "학번과 비밀번호를 모두 입력해주세요." },
       { status: 400 },
@@ -65,12 +57,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!/^\d{8}$/.test(studentNumber)) {
-    logUserRequest({
-      path: "/api/login",
-      method: request.method,
-      status: 400,
-      metadata: { reason: "invalid_student_number", studentNumber },
-    });
+    logRequest(400, { reason: "invalid_student_number", studentNumber });
     return NextResponse.json(
       { error: "학번 형식이 올바르지 않습니다." },
       { status: 400 },
@@ -105,12 +92,7 @@ export async function POST(request: NextRequest) {
     .get(studentNumber) as UserRow | undefined;
 
   if (!user) {
-    logUserRequest({
-      path: "/api/login",
-      method: request.method,
-      status: 401,
-      metadata: { reason: "not_registered", studentNumber },
-    });
+    logRequest(401, { reason: "not_registered", studentNumber });
     return NextResponse.json(
       { error: "등록되지 않은 학번입니다." },
       { status: 401 },
@@ -118,13 +100,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (!user.isActive) {
-    logUserRequest({
-      userId: user.id,
-      path: "/api/login",
-      method: request.method,
-      status: 403,
-      metadata: { reason: "inactive_account", studentNumber },
-    });
+    logRequest(403, { reason: "inactive_account", studentNumber }, user.id);
     return NextResponse.json(
       { error: "비활성화된 계정입니다. 관리자에게 문의하세요." },
       { status: 403 },
@@ -134,13 +110,7 @@ export async function POST(request: NextRequest) {
   const passwordMatches = await verifyPassword(password, user.passwordHash);
 
   if (!passwordMatches) {
-    logUserRequest({
-      userId: user.id,
-      path: "/api/login",
-      method: request.method,
-      status: 401,
-      metadata: { reason: "wrong_password", studentNumber },
-    });
+    logRequest(401, { reason: "wrong_password", studentNumber }, user.id);
     return NextResponse.json(
       { error: "비밀번호가 일치하지 않습니다." },
       { status: 401 },
@@ -178,13 +148,7 @@ export async function POST(request: NextRequest) {
     maxAge: 60 * 60 * 24 * 7,
   });
 
-  logUserRequest({
-    userId: user.id,
-    path: "/api/login",
-    method: request.method,
-    status: 200,
-    metadata: { studentNumber },
-  });
+  logRequest(200, { studentNumber }, user.id);
 
   return response;
 }

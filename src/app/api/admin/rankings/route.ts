@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-guard";
 import { logUserRequest } from "@/lib/logs";
+import { getRequestIp } from "@/lib/request";
 
 type RankingRow = {
   id: number;
@@ -18,6 +19,7 @@ type RankingRow = {
 
 export async function GET(request: NextRequest) {
   const adminUser = await requireAdmin();
+  const clientIp = getRequestIp(request);
 
   if (!adminUser) {
     logUserRequest({
@@ -25,6 +27,7 @@ export async function GET(request: NextRequest) {
       method: request.method,
       status: 401,
       metadata: { reason: "unauthorized" },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -43,6 +46,7 @@ export async function GET(request: NextRequest) {
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_project", projectParam },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "유효하지 않은 프로젝트 번호입니다." }, { status: 400 });
   }
@@ -60,6 +64,7 @@ export async function GET(request: NextRequest) {
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_date", fromParam, toParam },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "유효한 날짜 범위가 필요합니다." }, { status: 400 });
   }
@@ -161,6 +166,7 @@ export async function GET(request: NextRequest) {
       to: toIso,
       count: normalized.length,
     },
+    ipAddress: clientIp,
   });
 
   return NextResponse.json({

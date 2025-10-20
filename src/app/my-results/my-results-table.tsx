@@ -52,7 +52,8 @@ export default function MyResultsTable({ scores }: Props) {
 
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data?.error ?? "삭제에 실패했습니다.");
+        setError(data?.error ?? "삭제에 실패했습니다.");
+        return;
       }
 
       router.refresh();
@@ -106,7 +107,7 @@ export default function MyResultsTable({ scores }: Props) {
                 <td className="px-4 py-3">프로젝트 {row.projectNumber}</td>
                 <td className="px-4 py-3 text-right">{row.score.toFixed(4)}</td>
                 <td className="px-4 py-3">
-                  {new Date(row.evaluatedAt).toLocaleString("ko-KR")}
+                  {new Date(row.evaluatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
                 </td>
                 <td className="px-4 py-3 text-center">
                   {row.hasFile ? (

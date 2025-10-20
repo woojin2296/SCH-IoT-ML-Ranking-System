@@ -5,6 +5,7 @@ import { hashPassword } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { cleanupExpiredSessions, createSession } from "@/lib/session";
 import { logUserRequest } from "@/lib/logs";
+import { getRequestIp } from "@/lib/request";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ type CreateUserPayload = {
 
 export async function POST(request: NextRequest) {
   let payload: CreateUserPayload;
+  const clientIp = getRequestIp(request);
 
   try {
     payload = (await request.json()) as CreateUserPayload;
@@ -26,6 +28,7 @@ export async function POST(request: NextRequest) {
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_json" },
+      ipAddress: clientIp,
     });
     return NextResponse.json(
       { error: "잘못된 요청 형식입니다." },
@@ -49,6 +52,7 @@ export async function POST(request: NextRequest) {
       method: request.method,
       status: 400,
       metadata: { reason: "missing_fields", studentNumber },
+      ipAddress: clientIp,
     });
     return NextResponse.json(
       { error: "이름, 학번, 비밀번호는 필수 입력값입니다." },
@@ -62,6 +66,7 @@ export async function POST(request: NextRequest) {
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_name", studentNumber },
+      ipAddress: clientIp,
     });
     return NextResponse.json(
       { error: "이름은 한글 또는 영문으로 입력해주세요." },
@@ -75,6 +80,7 @@ export async function POST(request: NextRequest) {
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_student_number", studentNumber },
+      ipAddress: clientIp,
     });
     return NextResponse.json(
       { error: "학번 형식이 올바르지 않습니다." },
@@ -165,6 +171,7 @@ export async function POST(request: NextRequest) {
       method: request.method,
       status: 201,
       metadata: { studentNumber, role },
+      ipAddress: clientIp,
     });
 
     return response;
@@ -178,6 +185,7 @@ export async function POST(request: NextRequest) {
         method: request.method,
         status: 409,
         metadata: { reason: "duplicate_student_number", studentNumber },
+        ipAddress: clientIp,
       });
       return NextResponse.json(
         { error: "이미 존재하는 학번입니다." },
@@ -191,6 +199,7 @@ export async function POST(request: NextRequest) {
       method: request.method,
       status: 500,
       metadata: { reason: "insert_failed", studentNumber },
+      ipAddress: clientIp,
     });
     return NextResponse.json(
       { error: "사용자 생성 중 오류가 발생했습니다." },

@@ -78,22 +78,61 @@ export default async function Home({
     queryParams.set("year", String(requestedYear));
   }
 
-  const response = await fetch(`${baseUrl}/api/rankings?${queryParams.toString()}`, {
-    headers: {
-      Cookie: cookieHeader,
-    },
-    cache: "no-store",
-  });
+  let data: RankingsResponse | null = null;
+  try {
+    const response = await fetch(`${baseUrl}/api/rankings?${queryParams.toString()}`, {
+      headers: {
+        Cookie: cookieHeader,
+      },
+      cache: "no-store",
+    });
 
-  if (response.status === 401) {
-    redirect("/login");
+    if (response.status === 401) {
+      redirect("/login");
+    }
+
+    if (!response.ok) {
+      const message = `랭킹 정보를 불러오는 중 오류가 발생했습니다. (status: ${response.status})`;
+      console.error(message);
+      throw new Error(message);
+    }
+
+    data = (await response.json()) as RankingsResponse;
+  } catch (error) {
+    console.error("Failed to fetch rankings", error);
+    return (
+      <div className="min-h-svh flex flex-col items-center justify-center gap-4 bg-neutral-50 p-6 text-center text-neutral-700">
+        <AppHero
+          alerts={[
+            `${displayName}님, 랭킹 데이터를 불러오는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.`,
+          ]}
+        />
+        <div className="rounded-lg border border-neutral-200 bg-white px-6 py-4 shadow-sm">
+          <p className="text-sm text-neutral-600">
+            시스템 오류로 인해 랭킹을 표시할 수 없습니다. 문제가 지속되면 관리자에게 문의해주세요.
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  if (!response.ok) {
-    throw new Error("랭킹 정보를 불러오는데 실패했습니다.");
+  if (!data) {
+    return (
+      <div className="min-h-svh flex flex-col items-center justify-center gap-4 bg-neutral-50 p-6 text-center text-neutral-700">
+        <AppHero
+          alerts={[
+            `${displayName}님, 랭킹 데이터를 불러오는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.`,
+          ]}
+        />
+        <div className="rounded-lg border border-neutral-200 bg-white px-6 py-4 shadow-sm">
+          <p className="text-sm text-neutral-600">
+            예상치 못한 오류로 데이터를 로드하지 못했습니다. 재시도 후에도 문제가 지속되면 관리자에게 문의해주세요.
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  const data = (await response.json()) as RankingsResponse;
   const rankings = data.rankings;
   const myBestScore = data.myBestScore;
   const selectedYear = data.selectedYear;

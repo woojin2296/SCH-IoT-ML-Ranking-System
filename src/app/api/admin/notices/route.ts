@@ -60,6 +60,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   const adminUser = await requireAdmin();
+  const clientIp = getRequestIp(request);
 
   if (!adminUser) {
     logUserRequest({
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
       method: request.method,
       status: 401,
       metadata: { reason: "unauthorized" },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -86,6 +88,7 @@ export async function POST(request: NextRequest) {
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_json" },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "잘못된 요청 형식입니다." }, { status: 400 });
   }
@@ -100,6 +103,7 @@ export async function POST(request: NextRequest) {
       method: request.method,
       status: 400,
       metadata: { reason: "missing_message" },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "공지 내용을 입력해주세요." }, { status: 400 });
   }
@@ -137,6 +141,7 @@ export async function POST(request: NextRequest) {
     method: request.method,
     status: 201,
     metadata: { id: notice.id },
+    ipAddress: clientIp,
   });
 
   return NextResponse.json({ notice }, { status: 201 });
@@ -144,6 +149,7 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const adminUser = await requireAdmin();
+  const clientIp = getRequestIp(request);
 
   if (!adminUser) {
     logUserRequest({
@@ -151,6 +157,7 @@ export async function PATCH(request: NextRequest) {
       method: request.method,
       status: 401,
       metadata: { reason: "unauthorized" },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -171,6 +178,7 @@ export async function PATCH(request: NextRequest) {
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_json" },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "잘못된 요청 형식입니다." }, { status: 400 });
   }
@@ -184,6 +192,7 @@ export async function PATCH(request: NextRequest) {
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_id", id },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "유효한 공지 ID가 필요합니다." }, { status: 400 });
   }
@@ -213,6 +222,7 @@ export async function PATCH(request: NextRequest) {
       method: request.method,
       status: 404,
       metadata: { reason: "not_found", id },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "공지를 찾을 수 없습니다." }, { status: 404 });
   }
@@ -228,6 +238,7 @@ export async function PATCH(request: NextRequest) {
         method: request.method,
         status: 400,
         metadata: { reason: "empty_message", id },
+        ipAddress: clientIp,
       });
       return NextResponse.json({ error: "공지 내용을 입력해주세요." }, { status: 400 });
     }
@@ -267,6 +278,7 @@ export async function PATCH(request: NextRequest) {
     method: request.method,
     status: 200,
     metadata: { id },
+    ipAddress: clientIp,
   });
 
   return NextResponse.json({ notice });
@@ -274,6 +286,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const adminUser = await requireAdmin();
+  const clientIp = getRequestIp(request);
 
   if (!adminUser) {
     logUserRequest({
@@ -281,6 +294,7 @@ export async function DELETE(request: NextRequest) {
       method: request.method,
       status: 401,
       metadata: { reason: "unauthorized" },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -299,6 +313,7 @@ export async function DELETE(request: NextRequest) {
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_json" },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "잘못된 요청 형식입니다." }, { status: 400 });
   }
@@ -312,6 +327,7 @@ export async function DELETE(request: NextRequest) {
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_id", id },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "유효한 공지 ID가 필요합니다." }, { status: 400 });
   }
@@ -326,6 +342,7 @@ export async function DELETE(request: NextRequest) {
       method: request.method,
       status: 404,
       metadata: { reason: "not_found", id },
+      ipAddress: clientIp,
     });
     return NextResponse.json({ error: "공지를 찾을 수 없습니다." }, { status: 404 });
   }
@@ -336,6 +353,7 @@ export async function DELETE(request: NextRequest) {
     method: request.method,
     status: 200,
     metadata: { action: "delete", id },
+    ipAddress: clientIp,
   });
 
   return NextResponse.json({ success: true });

@@ -18,6 +18,7 @@ type RequestLogEntry = {
   method: string;
   status?: number | null;
   metadata?: Record<string, unknown> | null;
+  ipAddress?: string | null;
 };
 
 export function logEvaluationChange(entry: EvaluationLogEntry) {
@@ -57,9 +58,10 @@ export function logUserRequest(entry: RequestLogEntry) {
         path,
         method,
         status,
-        metadata
+        metadata,
+        ip_address
       )
-      VALUES (?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?)
     `,
   ).run(
     entry.userId ?? null,
@@ -67,5 +69,6 @@ export function logUserRequest(entry: RequestLogEntry) {
     entry.method,
     entry.status ?? null,
     entry.metadata ? JSON.stringify(entry.metadata) : null,
+    entry.ipAddress ?? null,
   );
 }

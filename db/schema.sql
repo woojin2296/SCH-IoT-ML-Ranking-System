@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS request_logs (
   path TEXT NOT NULL,
   method TEXT NOT NULL,
   status INTEGER,
+  ip_address TEXT,
   metadata TEXT,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL

@@ -728,7 +728,9 @@ export default function AdminDashboard({
                       )}
                     </td>
                     <td className="px-4 py-3 text-xs text-neutral-500">
-                      {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString("ko-KR") : "-"}
+                      {user.lastLoginAt
+                        ? new Date(user.lastLoginAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })
+                        : "-"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {isEditing ? (
@@ -813,7 +815,7 @@ export default function AdminDashboard({
                     <td className="px-4 py-3">프로젝트 {score.projectNumber}</td>
                     <td className="px-4 py-3 text-right">{score.score.toFixed(4)}</td>
                     <td className="px-4 py-3">
-                      {new Date(score.evaluatedAt).toLocaleString("ko-KR")}
+                      {new Date(score.evaluatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
                     </td>
                     <td className="px-4 py-3 text-center">
                       {score.hasFile ? (
@@ -963,7 +965,7 @@ export default function AdminDashboard({
                         )}
                       </td>
                       <td className="px-4 py-3 text-xs text-neutral-500">
-                        {new Date(record.evaluatedAt).toLocaleString("ko-KR")}
+                        {new Date(record.evaluatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
                       </td>
                     </tr>
                   ))
@@ -1066,7 +1068,7 @@ export default function AdminDashboard({
                         )}
                       </td>
                       <td className="px-4 py-3 text-xs text-neutral-500">
-                        {new Date(notice.createdAt).toLocaleString("ko-KR")}
+                        {new Date(notice.createdAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {isEditing ? (
@@ -1154,7 +1156,7 @@ export default function AdminDashboard({
                     </td>
                     <td className="px-4 py-3">{log.logYear ?? "-"}</td>
                     <td className="px-4 py-3 text-xs text-neutral-500">
-                      {new Date(log.createdAt).toLocaleString("ko-KR")}
+                      {new Date(log.createdAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
                     </td>
                   </tr>
                 ))}
@@ -1261,7 +1263,7 @@ export default function AdminDashboard({
                       <td className="px-4 py-3">{log.status ?? "-"}</td>
                       <td className="px-4 py-3 text-xs text-neutral-600 break-words">{metadataString}</td>
                       <td className="px-4 py-3 text-xs text-neutral-500">
-                        {new Date(log.createdAt).toLocaleString("ko-KR")}
+                        {new Date(log.createdAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
                       </td>
                     </tr>
                   );
