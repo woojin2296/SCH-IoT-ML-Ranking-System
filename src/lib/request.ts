@@ -12,5 +12,6 @@ export function getRequestIp(request: NextRequest): string {
     return realIp;
   }
 
-  return request.ip ?? "unknown";
+  const requestWithIp = request as { ip?: string | null };
+  return requestWithIp.ip ?? "unknown";
 }

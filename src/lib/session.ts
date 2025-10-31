@@ -35,6 +35,11 @@ export function createSession(userId: number) {
   };
 }
 
+export function cleanupExpiredSessions() {
+  const db = getDb();
+  db.prepare("DELETE FROM sessions WHERE expires_at <= CURRENT_TIMESTAMP").run();
+}
+
 export function revokeSessionsForUser(userId: number) {
   const db = getDb();
   db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
@@ -43,11 +48,6 @@ export function revokeSessionsForUser(userId: number) {
 export function deleteSession(sessionToken: string) {
   const db = getDb();
   db.prepare("DELETE FROM sessions WHERE session_token = ?").run(sessionToken);
-}
-
-export function cleanupExpiredSessions() {
-  const db = getDb();
-  db.prepare("DELETE FROM sessions WHERE expires_at <= CURRENT_TIMESTAMP").run();
 }
 
 export function getUserBySessionToken(

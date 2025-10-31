@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "r
 import { useRouter } from "next/navigation"
 
 import AppHero from "@/components/app/AppHero"
+import { AppNoticesList } from "@/components/app/AppNoticesList"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -394,15 +395,12 @@ export default function LoginPage() {
   )
 
   return (
-    <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10">
-      <AppHero
-        alerts={
-          noticeMessages.length
-            ? noticeMessages
-            : ["현 시스템은 SCH 머신러닝 미니 프로젝트의 랭킹 확인을 위한 플랫폼입니다."]
-        }
+    <div className="min-h-svh flex flex-col items-center gap-4 p-6 md:p-10">
+      <AppHero />
+      <AppNoticesList
+        items={ noticeMessages }
       />
-      <div className="flex flex-col items-center justify-center">
+      <div className="flex min-w-xl flex-col items-center justify-center">
         <div className="w-full max-w-xs space-y-8">
           {step === "studentNumber" ? renderStudentNumberStep() : null}
           {step === "login" ? renderLoginStep() : null}

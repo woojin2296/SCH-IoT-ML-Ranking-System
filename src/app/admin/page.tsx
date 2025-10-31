@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import AppHero from "@/components/app/AppHero";
+import { AppNoticesList } from "@/components/app/AppNoticesList";
 import AdminDashboard from "./admin-dashboard";
 import { getDb } from "@/lib/db";
 import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/session";
@@ -316,9 +317,11 @@ export default async function AdminPage() {
 
   return (
     <div className="min-h-svh flex flex-col gap-6 p-6 md:p-10">
-      <AppHero
-        title="관리자 대시보드"
-        alert="관리자는 이 페이지에서 제출 기록과 시스템 현황을 관리할 수 있습니다."
+      <AppHero title="관리자 대시보드" />
+      <AppNoticesList
+        items={[
+          "관리자는 이 페이지에서 제출 기록과 시스템 현황을 관리할 수 있습니다.",
+        ]}
       />
       <div className="flex justify-end">
         <Link
