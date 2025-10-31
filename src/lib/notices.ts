@@ -21,42 +21,7 @@ const mapNoticeRow = (row: NoticeRow): Notice => ({
   isActive: !!row.isActive,
 });
 
-let initialized = false;
-
-function ensureNoticesSchema() {
-  if (initialized) {
-    return;
-  }
-
-  const db = getDb();
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS notices (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      message TEXT NOT NULL,
-      is_active INTEGER NOT NULL DEFAULT 1,
-      created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TRIGGER IF NOT EXISTS notices_updated_at_trigger
-    AFTER UPDATE ON notices
-    BEGIN
-      UPDATE notices
-      SET updated_at = CURRENT_TIMESTAMP
-      WHERE id = NEW.id;
-    END;
-  `);
-
-  initialized = true;
-}
-
-export function getActiveNotice(): Notice | null {
-  const notices = getActiveNotices();
-  return notices[0] ?? null;
-}
-
 export function getActiveNotices(): Notice[] {
-  ensureNoticesSchema();
   const db = getDb();
   const rows = db
     .prepare(
@@ -78,7 +43,6 @@ export function getActiveNotices(): Notice[] {
 }
 
 export function getAllNotices(): Notice[] {
-  ensureNoticesSchema();
   const db = getDb();
   const rows = db
     .prepare(

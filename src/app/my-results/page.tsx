@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import AppHero from "@/components/app/AppHero";
+import { AppNoticesList } from "@/components/app/AppNoticesList";
 import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/session";
 import { getBaseUrl } from "@/lib/url";
 import { getActiveNotices } from "@/lib/notices";
@@ -97,8 +98,9 @@ export default async function MyResultsPage({
     const notices = getActiveNotices();
     return (
       <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10">
-        <AppHero
-          alerts={
+        <AppHero />
+        <AppNoticesList
+          items={
             notices.length
               ? notices.map((item) => item.message)
               : [`${displayName}님, 현재 개인 제출 기록을 불러올 수 없습니다. 잠시 후 다시 시도해주세요.`]
@@ -121,8 +123,9 @@ export default async function MyResultsPage({
 
   return (
     <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10">
-      <AppHero
-        alerts={
+      <AppHero />
+      <AppNoticesList
+        items={
           notices.length
             ? notices.map((item) => item.message)
             : [`${displayName}님, 현 시스템은 SCH 머신러닝 미니 프로젝트의 랭킹 확인을 위한 플랫폼입니다.`]

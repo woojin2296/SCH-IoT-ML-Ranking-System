@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { Notice } from "@/lib/notices";
-import { cn } from "@/lib/utils";
+import { AdminTabSwitcher } from "./components/AdminTabSwitcher";
+import { AdminTable } from "./components/AdminTable";
+import { PaginationControls } from "./components/PaginationControls";
 
 type UserRow = {
   id: number;
@@ -105,7 +107,7 @@ export default function AdminDashboard({
   rankingDefaultFrom,
   rankingDefaultTo,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<"users" | "scores" | "notices" | "logs" | "requestLogs">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "scores" | "notices" | "rankingRecords" | "logs" | "requestLogs">("users");
   const [users, setUsers] = useState(initialUsers);
   const [scores, setScores] = useState(initialScores);
   const [notices, setNotices] = useState(initialNotices);
@@ -610,23 +612,7 @@ export default function AdminDashboard({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              "rounded-md px-3 py-1 text-sm font-medium transition",
-              activeTab === tab.key
-                ? "bg-[#265392] text-white shadow"
-                : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200",
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <AdminTabSwitcher tabs={tabs} activeTab={activeTab} onSelect={(tab) => setActiveTab(tab)} />
 
       {activeTab === "users" ? (
         <section className="space-y-4">
@@ -656,104 +642,98 @@ export default function AdminDashboard({
           </select>
         </label>
           </header>
-        <div className="overflow-x-auto border border-neutral-200">
-          <table className="min-w-full divide-y divide-neutral-200 text-sm">
-            <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
-              <tr>
-                <th className="px-4 py-3">공개 ID</th>
-                <th className="px-4 py-3">이름</th>
-                <th className="px-4 py-3">학번</th>
-                <th className="px-4 py-3">년도</th>
-                <th className="px-4 py-3">역할</th>
-                <th className="px-4 py-3">최근 로그인</th>
-                <th className="px-4 py-3 text-right">관리</th>
+        <AdminTable
+          head={
+            <tr>
+              <th className="px-4 py-3">공개 ID</th>
+              <th className="px-4 py-3">이름</th>
+              <th className="px-4 py-3">학번</th>
+              <th className="px-4 py-3">년도</th>
+              <th className="px-4 py-3">역할</th>
+              <th className="px-4 py-3">최근 로그인</th>
+              <th className="px-4 py-3 text-right">관리</th>
+            </tr>
+          }
+          body={filteredUsers.map((user) => {
+            const isEditing = editingUserId === user.id && userDraft;
+            return (
+              <tr key={user.id}>
+                <td className="px-4 py-3 font-mono text-xs text-neutral-500">{user.publicId}</td>
+                <td className="px-4 py-3">
+                  {isEditing ? (
+                    <input
+                      className="w-full rounded-md border border-neutral-200 px-2 py-1 text-sm focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+                      value={userDraft!.name}
+                      onChange={(event) => updateDraft("name", event.target.value)}
+                    />
+                  ) : (
+                    user.name ?? "-"
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {isEditing ? (
+                    <input
+                      className="w-full rounded-md border border-neutral-200 px-2 py-1 text-sm focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+                      value={userDraft!.studentNumber}
+                      onChange={(event) => updateDraft("studentNumber", event.target.value)}
+                    />
+                  ) : (
+                    user.studentNumber
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {isEditing ? (
+                    <input
+                      className="w-full rounded-md border border-neutral-200 px-2 py-1 text-sm focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+                      value={semesterDraft ?? ""}
+                      onChange={(event) => setSemesterDraft(event.target.value)}
+                    />
+                  ) : (
+                    user.semester
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {isEditing ? (
+                    <select
+                      className="w-full rounded-md border border-neutral-200 px-2 py-1 text-sm focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+                      value={userDraft!.role}
+                      onChange={(event) => updateDraft("role", event.target.value)}
+                    >
+                      {ROLE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    (user.role === "admin" ? "관리자" : "사용자")
+                  )}
+                </td>
+                <td className="px-4 py-3 text-xs text-neutral-500">
+                  {user.lastLoginAt
+                    ? new Date(user.lastLoginAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })
+                    : "-"}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  {isEditing ? (
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={cancelEdit}>
+                        취소
+                      </Button>
+                      <Button size="sm" onClick={saveUser}>
+                        저장
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={() => beginEditUser(user)}>
+                      수정
+                    </Button>
+                  )}
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-100">
-              {filteredUsers.map((user) => {
-                const isEditing = editingUserId === user.id && userDraft;
-                return (
-                  <tr key={user.id}>
-                    <td className="px-4 py-3 font-mono text-xs text-neutral-500">
-                      {user.publicId}
-                    </td>
-                   <td className="px-4 py-3">
-                     {isEditing ? (
-                       <input
-                          className="w-full rounded-md border border-neutral-200 px-2 py-1 text-sm focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
-                          value={userDraft!.name}
-                          onChange={(event) => updateDraft("name", event.target.value)}
-                        />
-                      ) : (
-                        user.name ?? "-"
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
-                          className="w-full rounded-md border border-neutral-200 px-2 py-1 text-sm focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
-                          value={userDraft!.studentNumber}
-                          onChange={(event) => updateDraft("studentNumber", event.target.value)}
-                        />
-                      ) : (
-                        user.studentNumber
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <input
-                          className="w-full rounded-md border border-neutral-200 px-2 py-1 text-sm focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
-                          value={semesterDraft ?? ""}
-                          onChange={(event) => setSemesterDraft(event.target.value)}
-                        />
-                      ) : (
-                        user.semester
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {isEditing ? (
-                        <select
-                          className="w-full rounded-md border border-neutral-200 px-2 py-1 text-sm focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
-                          value={userDraft!.role}
-                          onChange={(event) => updateDraft("role", event.target.value)}
-                        >
-                          {ROLE_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        user.role === "admin" ? "관리자" : "사용자"
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-neutral-500">
-                      {user.lastLoginAt
-                        ? new Date(user.lastLoginAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })
-                        : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {isEditing ? (
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={cancelEdit}>
-                            취소
-                          </Button>
-                          <Button size="sm" onClick={saveUser}>
-                            저장
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button variant="outline" size="sm" onClick={() => beginEditUser(user)}>
-                          수정
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+            );
+          })}
+        />
         </section>
       ) : null}
 
@@ -783,94 +763,73 @@ export default function AdminDashboard({
               </select>
             </label>
           </header>
-          <div className="overflow-x-auto border border-neutral-200">
-            {rankingLoading ? (
-              <p className="px-4 py-2 text-xs text-neutral-500">랭킹 데이터를 불러오는 중입니다...</p>
-            ) : null}
-            <table className="min-w-full divide-y divide-neutral-200 text-sm">
-              <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th className="px-4 py-3">ID</th>
-                  <th className="px-4 py-3">참가자</th>
-                  <th className="px-4 py-3">학번</th>
-                  <th className="px-4 py-3">이름</th>
-                  <th className="px-4 py-3">년도</th>
-                  <th className="px-4 py-3">프로젝트</th>
-                  <th className="px-4 py-3 text-right">점수</th>
-                  <th className="px-4 py-3">제출일</th>
-                  <th className="px-4 py-3 text-center">첨부</th>
-                  <th className="px-4 py-3 text-right">관리</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {paginatedScores.map((score) => (
-                  <tr key={score.id}>
-                    <td className="px-4 py-3 font-mono text-xs text-neutral-500">{score.id}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-neutral-500">
-                      {score.userPublicId}
-                    </td>
-                    <td className="px-4 py-3">{score.studentNumber}</td>
-                    <td className="px-4 py-3">{score.name ?? "-"}</td>
-                    <td className="px-4 py-3">{score.userYear}</td>
-                    <td className="px-4 py-3">프로젝트 {score.projectNumber}</td>
-                    <td className="px-4 py-3 text-right">{score.score.toFixed(4)}</td>
-                    <td className="px-4 py-3">
-                      {new Date(score.evaluatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {score.hasFile ? (
-                        <a
-                          href={`/api/my-results/${score.id}/file`}
-                          className="inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-xs font-medium text-[#265392] transition hover:border-[#265392]"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {score.fileName ?? "파일"}
-                        </a>
-                      ) : (
-                        <span className="text-xs text-neutral-400">없음</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={pendingScoreId !== null}
-                        onClick={() => deleteScore(score.id)}
-                      >
-                        {pendingScoreId === score.id ? "삭제 중..." : "삭제"}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center justify-between text-sm text-neutral-600">
-            <span>
-              {scorePage} / {scoreTotalPages}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={scorePage <= 1 || pendingScoreId !== null}
-                onClick={() => setScorePage((prev) => Math.max(1, prev - 1))}
-              >
-                이전
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={scorePage >= scoreTotalPages || pendingScoreId !== null}
-                onClick={() => setScorePage((prev) => Math.min(scoreTotalPages, prev + 1))}
-              >
-                다음
-              </Button>
-            </div>
-          </div>
+          <AdminTable
+            beforeTable={
+              rankingLoading ? (
+                <p className="px-4 py-2 text-xs text-neutral-500">랭킹 데이터를 불러오는 중입니다...</p>
+              ) : null
+            }
+            head={
+              <tr>
+                <th className="px-4 py-3">ID</th>
+                <th className="px-4 py-3">참가자</th>
+                <th className="px-4 py-3">학번</th>
+                <th className="px-4 py-3">이름</th>
+                <th className="px-4 py-3">년도</th>
+                <th className="px-4 py-3">프로젝트</th>
+                <th className="px-4 py-3 text-right">점수</th>
+                <th className="px-4 py-3">제출일</th>
+                <th className="px-4 py-3 text-center">첨부</th>
+                <th className="px-4 py-3 text-right">관리</th>
+              </tr>
+            }
+            body={paginatedScores.map((score) => (
+              <tr key={score.id}>
+                <td className="px-4 py-3 font-mono text-xs text-neutral-500">{score.id}</td>
+                <td className="px-4 py-3 font-mono text-xs text-neutral-500">{score.userPublicId}</td>
+                <td className="px-4 py-3">{score.studentNumber}</td>
+                <td className="px-4 py-3">{score.name ?? "-"}</td>
+                <td className="px-4 py-3">{score.userYear}</td>
+                <td className="px-4 py-3">프로젝트 {score.projectNumber}</td>
+                <td className="px-4 py-3 text-right">{score.score.toFixed(4)}</td>
+                <td className="px-4 py-3">
+                  {new Date(score.evaluatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  {score.hasFile ? (
+                    <a
+                      href={`/api/my-results/${score.id}/file`}
+                      className="inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-xs font-medium text-[#265392] transition hover:border-[#265392]"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {score.fileName ?? "파일"}
+                    </a>
+                  ) : (
+                    <span className="text-xs text-neutral-400">없음</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={pendingScoreId !== null}
+                    onClick={() => deleteScore(score.id)}
+                  >
+                    {pendingScoreId === score.id ? "삭제 중..." : "삭제"}
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          />
+          <PaginationControls
+            page={scorePage}
+            totalPages={scoreTotalPages}
+            onPrevious={() => setScorePage((prev) => Math.max(1, prev - 1))}
+            onNext={() => setScorePage((prev) => Math.min(scoreTotalPages, prev + 1))}
+            disablePrevious={scorePage <= 1 || pendingScoreId !== null}
+            disableNext={scorePage >= scoreTotalPages || pendingScoreId !== null}
+          />
         </section>
       ) : null}
 
@@ -924,55 +883,53 @@ export default function AdminDashboard({
               </Button>
             </div>
           </header>
-          <div className="overflow-x-auto border border-neutral-200">
-            <table className="min-w-full divide-y divide-neutral-200 text-sm">
-              <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          <AdminTable
+            head={
+              <tr>
+                <th className="px-4 py-3">순위</th>
+                <th className="px-4 py-3">학번</th>
+                <th className="px-4 py-3">이름</th>
+                <th className="px-4 py-3 text-right">점수</th>
+                <th className="px-4 py-3 text-center">첨부</th>
+                <th className="px-4 py-3">제출일</th>
+              </tr>
+            }
+            body={
+              rankingRecords.length === 0 ? (
                 <tr>
-                  <th className="px-4 py-3">순위</th>
-                  <th className="px-4 py-3">학번</th>
-                  <th className="px-4 py-3">이름</th>
-                  <th className="px-4 py-3 text-right">점수</th>
-                  <th className="px-4 py-3 text-center">첨부</th>
-                  <th className="px-4 py-3">제출일</th>
+                  <td colSpan={6} className="px-4 py-6 text-center text-neutral-500">
+                    선택한 조건에 해당하는 랭킹 기록이 없습니다.
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {rankingRecords.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-neutral-500">
-                      선택한 조건에 해당하는 랭킹 기록이 없습니다.
+              ) : (
+                rankingRecords.map((record) => (
+                  <tr key={record.id}>
+                    <td className="px-4 py-3 font-semibold">{record.position}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-neutral-600">{record.studentNumber}</td>
+                    <td className="px-4 py-3">{record.name ?? "-"}</td>
+                    <td className="px-4 py-3 text-right">{record.score.toFixed(4)}</td>
+                    <td className="px-4 py-3 text-center">
+                      {record.hasFile ? (
+                        <a
+                          href={`/api/my-results/${record.id}/file`}
+                          className="inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-xs font-medium text-[#265392] transition hover:border-[#265392]"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {record.fileName ?? "파일"}
+                        </a>
+                      ) : (
+                        <span className="text-xs text-neutral-400">없음</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-neutral-500">
+                      {new Date(record.evaluatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
                     </td>
                   </tr>
-                ) : (
-                  rankingRecords.map((record) => (
-                    <tr key={record.id}>
-                      <td className="px-4 py-3 font-semibold">{record.position}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-neutral-600">{record.studentNumber}</td>
-                      <td className="px-4 py-3">{record.name ?? "-"}</td>
-                      <td className="px-4 py-3 text-right">{record.score.toFixed(4)}</td>
-                      <td className="px-4 py-3 text-center">
-                        {record.hasFile ? (
-                          <a
-                            href={`/api/my-results/${record.id}/file`}
-                            className="inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-xs font-medium text-[#265392] transition hover:border-[#265392]"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {record.fileName ?? "파일"}
-                          </a>
-                        ) : (
-                          <span className="text-xs text-neutral-400">없음</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-neutral-500">
-                        {new Date(record.evaluatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              )
+            }
+          />
         </section>
       ) : null}
 
@@ -1012,91 +969,87 @@ export default function AdminDashboard({
             </div>
           </form>
 
-          <div className="overflow-x-auto border border-neutral-200">
-            <table className="min-w-full divide-y divide-neutral-200 text-sm">
-              <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th className="px-4 py-3">ID</th>
-                  <th className="px-4 py-3">내용</th>
-                  <th className="px-4 py-3">상태</th>
-                  <th className="px-4 py-3">작성일</th>
-                  <th className="px-4 py-3 text-right">관리</th>
+          <AdminTable
+            head={
+              <tr>
+                <th className="px-4 py-3">ID</th>
+                <th className="px-4 py-3">내용</th>
+                <th className="px-4 py-3">상태</th>
+                <th className="px-4 py-3">작성일</th>
+                <th className="px-4 py-3 text-right">관리</th>
+              </tr>
+            }
+            body={notices.map((notice) => {
+              const isEditing = editingNoticeId === notice.id && noticeDraft;
+              return (
+                <tr key={notice.id}>
+                  <td className="px-4 py-3 font-mono text-xs text-neutral-500">{notice.id}</td>
+                  <td className="px-4 py-3">
+                    {isEditing ? (
+                      <textarea
+                        className="w-full rounded-md border border-neutral-200 px-2 py-1 text-sm focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
+                        rows={2}
+                        value={noticeDraft!.message}
+                        onChange={(event) =>
+                          setNoticeDraft((prev) => (prev ? { ...prev, message: event.target.value } : prev))
+                        }
+                      />
+                    ) : (
+                      notice.message
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    {isEditing ? (
+                      <label className="inline-flex items-center gap-2 text-sm text-neutral-700">
+                        <input
+                          type="checkbox"
+                          checked={noticeDraft!.isActive}
+                          onChange={(event) =>
+                            setNoticeDraft((prev) =>
+                              prev ? { ...prev, isActive: event.target.checked } : prev,
+                            )
+                          }
+                        />
+                        노출
+                      </label>
+                    ) : notice.isActive ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-700">
+                        노출 중
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-neutral-200 px-2 py-1 text-xs text-neutral-600">
+                        숨김
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-neutral-500">
+                    {new Date(notice.createdAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {isEditing ? (
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={cancelNoticeEdit}>
+                          취소
+                        </Button>
+                        <Button size="sm" onClick={saveNotice}>
+                          저장
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => beginEditNotice(notice)}>
+                          수정
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => deleteNotice(notice.id)}>
+                          삭제
+                        </Button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {notices.map((notice) => {
-                  const isEditing = editingNoticeId === notice.id && noticeDraft;
-                  return (
-                    <tr key={notice.id}>
-                      <td className="px-4 py-3 font-mono text-xs text-neutral-500">{notice.id}</td>
-                      <td className="px-4 py-3">
-                        {isEditing ? (
-                          <textarea
-                            className="w-full rounded-md border border-neutral-200 px-2 py-1 text-sm focus:border-[#265392] focus:outline-none focus:ring-2 focus:ring-[#265392]/20"
-                            rows={2}
-                            value={noticeDraft!.message}
-                            onChange={(event) =>
-                              setNoticeDraft((prev) => (prev ? { ...prev, message: event.target.value } : prev))
-                            }
-                          />
-                        ) : (
-                          notice.message
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm">
-                        {isEditing ? (
-                          <label className="inline-flex items-center gap-2 text-sm text-neutral-700">
-                            <input
-                              type="checkbox"
-                              checked={noticeDraft!.isActive}
-                              onChange={(event) =>
-                                setNoticeDraft((prev) =>
-                                  prev ? { ...prev, isActive: event.target.checked } : prev,
-                                )
-                              }
-                            />
-                            노출
-                          </label>
-                        ) : notice.isActive ? (
-                          <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs text-emerald-700">
-                            노출 중
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-neutral-200 px-2 py-1 text-xs text-neutral-600">
-                            숨김
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-neutral-500">
-                        {new Date(notice.createdAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {isEditing ? (
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={cancelNoticeEdit}>
-                              취소
-                            </Button>
-                            <Button size="sm" onClick={saveNotice}>
-                              저장
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => beginEditNotice(notice)}>
-                              수정
-                            </Button>
-                            <Button variant="outline" size="sm" onClick={() => deleteNotice(notice.id)}>
-                              삭제
-                            </Button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+              );
+            })}
+          />
         </section>
       ) : null}
 
@@ -1123,71 +1076,46 @@ export default function AdminDashboard({
               </select>
             </label>
           </header>
-          <div className="overflow-x-auto border border-neutral-200">
-            <table className="min-w-full divide-y divide-neutral-200 text-sm">
-              <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th className="px-4 py-3">ID</th>
-                  <th className="px-4 py-3">행위자</th>
-                  <th className="px-4 py-3">액션</th>
-                  <th className="px-4 py-3">대상</th>
-                  <th className="px-4 py-3">프로젝트</th>
-                  <th className="px-4 py-3 text-right">점수</th>
-                  <th className="px-4 py-3">년도</th>
-                  <th className="px-4 py-3">시각</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {paginatedLogs.map((log) => (
-                  <tr key={log.id}>
-                    <td className="px-4 py-3 font-mono text-xs text-neutral-500">{log.id}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-neutral-500">
-                      {log.actorPublicId ?? "시스템"}
-                    </td>
-                    <td className="px-4 py-3 capitalize">{log.action}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-neutral-500">
-                      {log.targetPublicId ?? "-"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {log.projectNumber ? `프로젝트 ${log.projectNumber}` : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {typeof log.score === "number" ? log.score.toFixed(4) : "-"}
-                    </td>
-                    <td className="px-4 py-3">{log.logYear ?? "-"}</td>
-                    <td className="px-4 py-3 text-xs text-neutral-500">
-                      {new Date(log.createdAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center justify-between text-sm text-neutral-600">
-            <span>
-              {logPage} / {logTotalPages}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={logPage <= 1}
-                onClick={() => setLogPage((prev) => Math.max(1, prev - 1))}
-              >
-                이전
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={logPage >= logTotalPages}
-                onClick={() => setLogPage((prev) => Math.min(logTotalPages, prev + 1))}
-              >
-                다음
-              </Button>
-            </div>
-          </div>
+          <AdminTable
+            head={
+              <tr>
+                <th className="px-4 py-3">ID</th>
+                <th className="px-4 py-3">행위자</th>
+                <th className="px-4 py-3">액션</th>
+                <th className="px-4 py-3">대상</th>
+                <th className="px-4 py-3">프로젝트</th>
+                <th className="px-4 py-3 text-right">점수</th>
+                <th className="px-4 py-3">년도</th>
+                <th className="px-4 py-3">시각</th>
+              </tr>
+            }
+            body={paginatedLogs.map((log) => (
+              <tr key={log.id}>
+                <td className="px-4 py-3 font-mono text-xs text-neutral-500">{log.id}</td>
+                <td className="px-4 py-3 font-mono text-xs text-neutral-500">
+                  {log.actorPublicId ?? "시스템"}
+                </td>
+                <td className="px-4 py-3 capitalize">{log.action}</td>
+                <td className="px-4 py-3 font-mono text-xs text-neutral-500">{log.targetPublicId ?? "-"}</td>
+                <td className="px-4 py-3">{log.projectNumber ? `프로젝트 ${log.projectNumber}` : "-"}</td>
+                <td className="px-4 py-3 text-right">
+                  {typeof log.score === "number" ? log.score.toFixed(4) : "-"}
+                </td>
+                <td className="px-4 py-3">{log.logYear ?? "-"}</td>
+                <td className="px-4 py-3 text-xs text-neutral-500">
+                  {new Date(log.createdAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+                </td>
+              </tr>
+            ))}
+          />
+          <PaginationControls
+            page={logPage}
+            totalPages={logTotalPages}
+            onPrevious={() => setLogPage((prev) => Math.max(1, prev - 1))}
+            onNext={() => setLogPage((prev) => Math.min(logTotalPages, prev + 1))}
+            disablePrevious={logPage <= 1}
+            disableNext={logPage >= logTotalPages}
+          />
         </section>
       ) : null}
 
@@ -1230,72 +1158,51 @@ export default function AdminDashboard({
               </label>
             </div>
           </header>
-          <div className="overflow-x-auto border border-neutral-200">
-            <table className="min-w-full divide-y divide-neutral-200 text-sm">
-              <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
-                <tr>
-                  <th className="px-4 py-3">ID</th>
-                  <th className="px-4 py-3">학번</th>
-                  <th className="px-4 py-3">경로</th>
-                  <th className="px-4 py-3">메서드</th>
-                  <th className="px-4 py-3">상태</th>
-                  <th className="px-4 py-3">메타데이터</th>
-                  <th className="px-4 py-3">시각</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {paginatedRequestLogs.map((log) => {
-                  const metadataString =
-                    log.metadata === null
-                      ? "-"
-                      : typeof log.metadata === "string"
-                        ? log.metadata
-                        : JSON.stringify(log.metadata);
+          <AdminTable
+            head={
+              <tr>
+                <th className="px-4 py-3">ID</th>
+                <th className="px-4 py-3">학번</th>
+                <th className="px-4 py-3">경로</th>
+                <th className="px-4 py-3">메서드</th>
+                <th className="px-4 py-3">상태</th>
+                <th className="px-4 py-3">메타데이터</th>
+                <th className="px-4 py-3">시각</th>
+              </tr>
+            }
+            body={paginatedRequestLogs.map((log) => {
+              const metadataString =
+                log.metadata === null
+                  ? "-"
+                  : typeof log.metadata === "string"
+                    ? log.metadata
+                    : JSON.stringify(log.metadata);
 
-                  return (
-                    <tr key={log.id}>
-                      <td className="px-4 py-3 font-mono text-xs text-neutral-500">{log.id}</td>
-                      <td className="px-4 py-3 font-mono text-xs text-neutral-500">
-                        {log.userStudentNumber ?? ""}
-                      </td>
-                      <td className="px-4 py-3">{log.path}</td>
-                      <td className="px-4 py-3 uppercase">{log.method}</td>
-                      <td className="px-4 py-3">{log.status ?? "-"}</td>
-                      <td className="px-4 py-3 text-xs text-neutral-600 break-words">{metadataString}</td>
-                      <td className="px-4 py-3 text-xs text-neutral-500">
-                        {new Date(log.createdAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center justify-between text-sm text-neutral-600">
-            <span>
-              {requestLogPage} / {requestLogTotalPages}
-            </span>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={requestLogPage <= 1}
-                onClick={() => setRequestLogPage((prev) => Math.max(1, prev - 1))}
-              >
-                이전
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={requestLogPage >= requestLogTotalPages}
-                onClick={() => setRequestLogPage((prev) => Math.min(requestLogTotalPages, prev + 1))}
-              >
-                다음
-              </Button>
-            </div>
-          </div>
+              return (
+                <tr key={log.id}>
+                  <td className="px-4 py-3 font-mono text-xs text-neutral-500">{log.id}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-neutral-500">
+                    {log.userStudentNumber ?? ""}
+                  </td>
+                  <td className="px-4 py-3">{log.path}</td>
+                  <td className="px-4 py-3 uppercase">{log.method}</td>
+                  <td className="px-4 py-3">{log.status ?? "-"}</td>
+                  <td className="px-4 py-3 break-words text-xs text-neutral-600">{metadataString}</td>
+                  <td className="px-4 py-3 text-xs text-neutral-500">
+                    {new Date(log.createdAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+                  </td>
+                </tr>
+              );
+            })}
+          />
+          <PaginationControls
+            page={requestLogPage}
+            totalPages={requestLogTotalPages}
+            onPrevious={() => setRequestLogPage((prev) => Math.max(1, prev - 1))}
+            onNext={() => setRequestLogPage((prev) => Math.min(requestLogTotalPages, prev + 1))}
+            disablePrevious={requestLogPage <= 1}
+            disableNext={requestLogPage >= requestLogTotalPages}
+          />
         </section>
       ) : null}
     </div>

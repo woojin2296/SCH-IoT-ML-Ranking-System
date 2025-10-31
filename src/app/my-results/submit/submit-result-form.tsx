@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { projects } from "@/lib/projects";
 import AppHero from "@/components/app/AppHero";
+import { AppNoticesList } from "@/components/app/AppNoticesList";
 import { Alert } from "@/components/ui/alert";
 
 type SubmitState = "idle" | "submitting" | "success" | "error";
@@ -101,8 +102,9 @@ export default function SubmitResultForm() {
 
   return (
     <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10">
-      <AppHero
-        alerts={
+      <AppHero />
+      <AppNoticesList
+        items={
           noticeMessages.length
             ? noticeMessages
             : ["현 시스템은 SCH 머신러닝 미니 프로젝트의 랭킹 확인을 위한 플랫폼입니다."]

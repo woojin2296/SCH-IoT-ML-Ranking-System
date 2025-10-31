@@ -24,7 +24,7 @@ export function createRequestLogger(
       method,
       status,
       metadata,
-      ipAddress,
+      ipAddress: overrideUserId ?? defaultUserId ? ipAddress : ipAddress ?? "unknown",
     });
   };
 }
