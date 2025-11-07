@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/session";
+import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/services/sessionService";
 
 export async function requireSessionUser() {
   cleanupExpiredSessions();

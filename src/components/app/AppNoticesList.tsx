@@ -18,7 +18,7 @@ export function AppNoticesList({ items, className, alertClassName }: AppNoticesL
   }
 
   return (
-    <div className={cn("mt-8 mb-8 flex w-full max-w-xl flex-col gap-4", className)}>
+    <div className={cn("mt-8 mb-8 flex w-full max-w-xl flex-col gap-4 flex", className)}>
       {items.map((content, index) => (
         <Alert
           key={index}

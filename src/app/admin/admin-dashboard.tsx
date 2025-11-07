@@ -3,7 +3,17 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from "react";
 
 import { Button } from "@/components/ui/button";
-import type { Notice } from "@/lib/notices";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import type { Notice } from "@/lib/services/noticeService";
 import { AdminTabSwitcher } from "./components/AdminTabSwitcher";
 import { AdminTable } from "./components/AdminTable";
 import { PaginationControls } from "./components/PaginationControls";
@@ -41,6 +51,7 @@ type Props = {
   initialNotices: Notice[];
   initialLogs: LogRow[];
   initialRequestLogs: RequestLogRow[];
+  initialSettings: AppSetting[];
   availableYears: number[];
   selectedYear: number;
   requestMethodOptions: string[];
@@ -70,10 +81,14 @@ type LogRow = {
 
 type RequestLogRow = {
   id: number;
-  userId: number | null;
+  source: string;
+  sourceType: "user" | "ip" | "unknown";
+  sourceValue: string;
+  sourceUserId: number | null;
   userPublicId: string | null;
   userStudentNumber: string | null;
   name: string | null;
+  ipAddress: string | null;
   path: string;
   method: string;
   status: number | null;
@@ -100,6 +115,7 @@ export default function AdminDashboard({
   initialNotices,
   initialLogs,
   initialRequestLogs,
+  initialSettings,
   availableYears,
   selectedYear,
   requestMethodOptions,
@@ -113,6 +129,7 @@ export default function AdminDashboard({
   const [notices, setNotices] = useState(initialNotices);
   const [logs, setLogs] = useState(initialLogs);
   const [requestLogs, setRequestLogs] = useState(initialRequestLogs);
+  const [settings, setSettings] = useState(initialSettings);
   const [rankingRecords, setRankingRecords] = useState<RankingRecord[]>(initialRankingRecords);
   const [scorePage, setScorePage] = useState(1);
   const [logPage, setLogPage] = useState(1);
@@ -608,6 +625,7 @@ export default function AdminDashboard({
     { key: "rankingRecords", label: "랭킹 기록" },
     { key: "logs", label: "제출 로그" },
     { key: "requestLogs", label: "요청 로그" },
+    { key: "settings", label: "시스템 설정" },
   ];
 
   return (
@@ -1162,7 +1180,8 @@ export default function AdminDashboard({
             head={
               <tr>
                 <th className="px-4 py-3">ID</th>
-                <th className="px-4 py-3">학번</th>
+                <th className="px-4 py-3">출처</th>
+                <th className="px-4 py-3">IP</th>
                 <th className="px-4 py-3">경로</th>
                 <th className="px-4 py-3">메서드</th>
                 <th className="px-4 py-3">상태</th>
@@ -1171,23 +1190,64 @@ export default function AdminDashboard({
               </tr>
             }
             body={paginatedRequestLogs.map((log) => {
+              const hasMetadata = log.metadata !== null;
               const metadataString =
                 log.metadata === null
-                  ? "-"
+                  ? ""
                   : typeof log.metadata === "string"
                     ? log.metadata
-                    : JSON.stringify(log.metadata);
+                    : JSON.stringify(log.metadata, null, 2);
+              const originDisplay =
+                log.sourceType === "user"
+                  ? log.userStudentNumber
+                    ? `${log.userStudentNumber}${log.name ? ` (${log.name})` : ""}`
+                    : log.sourceUserId !== null
+                      ? `사용자 ${log.sourceUserId}`
+                      : log.source
+                  : log.sourceType === "ip"
+                    ? log.sourceValue || log.source
+                    : log.source;
+              const ipDisplay = log.ipAddress ?? "-";
 
               return (
                 <tr key={log.id}>
                   <td className="px-4 py-3 font-mono text-xs text-neutral-500">{log.id}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-neutral-500">
-                    {log.userStudentNumber ?? ""}
-                  </td>
+                  <td className="px-4 py-3 text-sm text-neutral-700">{originDisplay}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-neutral-500">{ipDisplay}</td>
                   <td className="px-4 py-3">{log.path}</td>
                   <td className="px-4 py-3 uppercase">{log.method}</td>
                   <td className="px-4 py-3">{log.status ?? "-"}</td>
-                  <td className="px-4 py-3 break-words text-xs text-neutral-600">{metadataString}</td>
+                  <td className="px-4 py-3 text-xs text-neutral-600">
+                    {hasMetadata ? (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-neutral-200 text-xs text-neutral-700"
+                          >
+                            메타데이터 보기
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="sm:max-w-xl">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>요청 메타데이터</AlertDialogTitle>
+                            <AlertDialogDescription asChild>
+                              <pre className="mt-4 max-h-[50vh] overflow-auto rounded bg-neutral-900 p-4 text-left text-xs leading-relaxed text-neutral-100">
+                                {metadataString}
+                              </pre>
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>닫기</AlertDialogCancel>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    ) : (
+                      <span className="text-neutral-400">-</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-xs text-neutral-500">
                     {new Date(log.createdAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
                   </td>
@@ -1205,6 +1265,38 @@ export default function AdminDashboard({
           />
         </section>
       ) : null}
+
+      {activeTab === "settings" ? (
+        <section className="space-y-4">
+          <header>
+            <h2 className="text-lg font-semibold">시스템 설정</h2>
+            <p className="text-sm text-neutral-500">키-값 형태로 저장된 전역 설정 값입니다.</p>
+          </header>
+          <AdminTable
+            head={
+              <tr>
+                <th className="px-4 py-3">Key</th>
+                <th className="px-4 py-3">Value</th>
+                <th className="px-4 py-3">Updated</th>
+              </tr>
+            }
+            body={settings.map((setting) => (
+              <tr key={setting.key}>
+                <td className="px-4 py-3 font-mono text-xs text-neutral-500">{setting.key}</td>
+                <td className="px-4 py-3 font-mono text-xs text-neutral-700 break-words">{setting.value}</td>
+                <td className="px-4 py-3 text-xs text-neutral-500">
+                  {new Date(setting.updatedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}
+                </td>
+              </tr>
+            ))}
+          />
+        </section>
+      ) : null}
     </div>
   );
 }
+type AppSetting = {
+  key: string;
+  value: string;
+  updatedAt: string;
+};

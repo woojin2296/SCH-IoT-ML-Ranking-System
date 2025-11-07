@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getDb } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-guard";
 import { createRequestLogger } from "@/lib/request-logger";
-
-const ROLE_SET = new Set(["user", "admin"]);
+import { listUsersOrderedByCreation } from "@/lib/repositories/userRepository";
+import { updateUserViaAdmin } from "@/lib/services/userService";
 
 // GET /api/admin/users
 // - Requires admin session.
@@ -20,28 +19,7 @@ export async function GET(request: NextRequest) {
 
   const logRequest = createRequestLogger(request, request.nextUrl.pathname, request.method, adminUser.id);
 
-  const db = getDb();
-  const users = db
-    .prepare(
-      `
-        SELECT
-          id,
-          student_number AS studentNumber,
-          name,
-          CASE
-            WHEN semester >= 100000 THEN CAST(semester / 100 AS INTEGER)
-            ELSE semester
-          END AS semester,
-          role,
-          public_id AS publicId,
-          last_login_at AS lastLoginAt,
-          created_at AS createdAt,
-          updated_at AS updatedAt
-        FROM users
-        ORDER BY created_at ASC
-      `,
-    )
-    .all();
+  const users = listUsersOrderedByCreation();
 
   logRequest(200, { count: users.length });
 
@@ -79,103 +57,49 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "잘못된 요청 형식입니다." }, { status: 400 });
   }
 
-  const { id, name, studentNumber, role } = payload;
+  const result = updateUserViaAdmin(payload);
 
-  if (typeof id !== "number" || !Number.isInteger(id) || id <= 0) {
-    logRequest(400, { reason: "invalid_id", id });
+  if (result.status === "invalid_id") {
+    logRequest(400, { reason: "invalid_id", id: payload.id });
     return NextResponse.json({ error: "유효한 사용자 ID가 필요합니다." }, { status: 400 });
   }
 
-  const trimmedName = name?.trim();
-  const trimmedStudentNumber = studentNumber?.trim();
-  const normalizedRole = role?.trim();
-  const semesterValue = typeof payload.semester === "number" ? payload.semester : undefined;
-
-  if (!trimmedName) {
-    logRequest(400, { reason: "missing_name", id });
+  if (result.status === "missing_name") {
+    logRequest(400, { reason: "missing_name", id: payload.id });
     return NextResponse.json({ error: "이름을 입력해주세요." }, { status: 400 });
   }
 
-  if (!trimmedStudentNumber || !/^\d{8}$/.test(trimmedStudentNumber)) {
-    logRequest(400, { reason: "invalid_student_number", id });
+  if (result.status === "invalid_student_number") {
+    logRequest(400, { reason: "invalid_student_number", id: payload.id });
     return NextResponse.json({ error: "학번은 8자리 숫자여야 합니다." }, { status: 400 });
   }
 
-  if (!normalizedRole || !ROLE_SET.has(normalizedRole)) {
-    logRequest(400, { reason: "invalid_role", id });
+  if (result.status === "invalid_role") {
+    logRequest(400, { reason: "invalid_role", id: payload.id });
     return NextResponse.json({ error: "역할 정보가 올바르지 않습니다." }, { status: 400 });
   }
 
-  const currentYear = new Date().getFullYear();
-  const normalizedSemester =
-    semesterValue !== undefined ? semesterValue : currentYear;
-
-  if (
-    !Number.isInteger(normalizedSemester) ||
-    normalizedSemester < 2000 ||
-    normalizedSemester > currentYear + 10
-  ) {
-    logRequest(400, { reason: "invalid_semester", id, semester: normalizedSemester });
+  if (result.status === "invalid_semester") {
+    logRequest(400, { reason: "invalid_semester", id: payload.id, semester: result.semester });
     return NextResponse.json({ error: "년도는 4자리 숫자로 입력해주세요." }, { status: 400 });
   }
 
-  const db = getDb();
+  if (result.status === "duplicate_student_number") {
+    logRequest(409, { reason: "duplicate_student_number", id: payload.id });
+    return NextResponse.json({ error: "중복된 학번입니다." }, { status: 409 });
+  }
 
-  try {
-    const stmt = db.prepare(
-      `
-        UPDATE users
-        SET name = ?, student_number = ?, role = ?, semester = ?
-        WHERE id = ?
-      `,
-    );
+  if (result.status === "not_found") {
+    logRequest(404, { reason: "not_found", id: payload.id });
+    return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
+  }
 
-    const result = stmt.run(
-      trimmedName,
-      trimmedStudentNumber,
-      normalizedRole,
-      normalizedSemester,
-      id,
-    );
-
-    if (result.changes === 0) {
-      logRequest(404, { reason: "not_found", id });
-      return NextResponse.json({ error: "사용자를 찾을 수 없습니다." }, { status: 404 });
-    }
-
-    const user = db
-      .prepare(
-        `
-          SELECT
-            id,
-            student_number AS studentNumber,
-            name,
-            role,
-            CASE
-              WHEN semester >= 100000 THEN CAST(semester / 100 AS INTEGER)
-              ELSE semester
-            END AS semester,
-            public_id AS publicId,
-            last_login_at AS lastLoginAt,
-            created_at AS createdAt,
-            updated_at AS updatedAt
-          FROM users
-          WHERE id = ?
-        `,
-      )
-      .get(id);
-
-    logRequest(200, { id });
-
-    return NextResponse.json({ user });
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("UNIQUE")) {
-      logRequest(409, { reason: "duplicate_student_number", id });
-      return NextResponse.json({ error: "중복된 학번입니다." }, { status: 409 });
-    }
-
-    console.error("Failed to update user", error);
-    logRequest(500, { id, reason: "update_failed" });
+  if (result.status !== "success") {
+    logRequest(500, { reason: "update_failed", id: payload.id });
     return NextResponse.json({ error: "사용자 수정 중 오류가 발생했습니다." }, { status: 500 });
   }
+
+  logRequest(200, { id: result.user.id });
+
+  return NextResponse.json({ user: result.user });
 }

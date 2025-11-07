@@ -1,11 +1,8 @@
-import { randomBytes } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
-import { hashPassword } from "@/lib/auth";
-import { getDb } from "@/lib/db";
-import { cleanupExpiredSessions, createSession } from "@/lib/session";
-import { logUserRequest } from "@/lib/logs";
+import { logUserRequest, resolveRequestSource } from "@/lib/services/logService";
 import { getRequestIp } from "@/lib/request";
+import { registerUser } from "@/lib/services/userService";
 
 export const dynamic = "force-dynamic";
 
@@ -23,16 +20,18 @@ type CreateUserPayload = {
 export async function POST(request: NextRequest) {
   let payload: CreateUserPayload;
   const clientIp = getRequestIp(request);
+  const resolvedIp = clientIp ?? "unknown";
 
   try {
     payload = (await request.json()) as CreateUserPayload;
   } catch {
     logUserRequest({
+      source: resolveRequestSource(null, clientIp),
       path: "/api/users",
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_json" },
-      ipAddress: clientIp,
+      ipAddress: resolvedIp,
     });
     return NextResponse.json(
       { error: "잘못된 요청 형식입니다." },
@@ -40,23 +39,33 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const name = payload.name?.trim();
-  const studentNumber = payload.studentNumber?.trim();
-  const password = payload.password;
-  const allowedRoles = new Set(["user", "admin"]);
-  const roleRaw =
-    typeof payload.role === "string" && payload.role.trim().length > 0
-      ? payload.role.trim().toLowerCase()
-      : "user";
-  const role = allowedRoles.has(roleRaw) ? roleRaw : "user";
-
-  if (!name || !studentNumber || !password) {
+  let result;
+  try {
+    result = await registerUser(payload);
+  } catch (error) {
+    console.error("Failed to register user", error);
     logUserRequest({
+      source: resolveRequestSource(null, clientIp),
+      path: "/api/users",
+      method: request.method,
+      status: 500,
+      metadata: { reason: "insert_failed", studentNumber: payload.studentNumber?.trim() },
+      ipAddress: resolvedIp,
+    });
+    return NextResponse.json(
+      { error: "사용자 생성 중 오류가 발생했습니다." },
+      { status: 500 },
+    );
+  }
+
+  if (result.status === "missing_fields") {
+    logUserRequest({
+      source: resolveRequestSource(null, clientIp),
       path: "/api/users",
       method: request.method,
       status: 400,
-      metadata: { reason: "missing_fields", studentNumber },
-      ipAddress: clientIp,
+      metadata: { reason: "missing_fields", studentNumber: payload.studentNumber?.trim() },
+      ipAddress: resolvedIp,
     });
     return NextResponse.json(
       { error: "이름, 학번, 비밀번호는 필수 입력값입니다." },
@@ -64,13 +73,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!/^[가-힣a-zA-Z\s]{2,}$/u.test(name)) {
+  if (result.status === "invalid_name") {
     logUserRequest({
+      source: resolveRequestSource(null, clientIp),
       path: "/api/users",
       method: request.method,
       status: 400,
-      metadata: { reason: "invalid_name", studentNumber },
-      ipAddress: clientIp,
+      metadata: { reason: "invalid_name", studentNumber: payload.studentNumber?.trim() },
+      ipAddress: resolvedIp,
     });
     return NextResponse.json(
       { error: "이름은 한글 또는 영문으로 입력해주세요." },
@@ -78,13 +88,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (!/^\d{8}$/.test(studentNumber)) {
+  if (result.status === "invalid_student_number") {
     logUserRequest({
+      source: resolveRequestSource(null, clientIp),
       path: "/api/users",
       method: request.method,
       status: 400,
-      metadata: { reason: "invalid_student_number", studentNumber },
-      ipAddress: clientIp,
+      metadata: { reason: "invalid_student_number", studentNumber: payload.studentNumber?.trim() },
+      ipAddress: resolvedIp,
     });
     return NextResponse.json(
       { error: "학번 형식이 올바르지 않습니다." },
@@ -92,122 +103,76 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const db = getDb();
-  const generatePublicId = () => randomBytes(4).toString("hex");
-
-  let publicId = generatePublicId();
-  while (
-    db
-      .prepare("SELECT 1 FROM users WHERE public_id = ?")
-      .get(publicId)
-  ) {
-    publicId = generatePublicId();
-  }
-  const passwordHash = await hashPassword(password);
-
-  try {
-    const currentYear = new Date().getFullYear();
-    const insert = db.prepare(
-      `
-        INSERT INTO users (student_number, password_hash, name, public_id, role, semester)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `,
-    );
-    const result = insert.run(
-      studentNumber,
-      passwordHash,
-      name,
-      publicId,
-      role,
-      currentYear,
-    );
-
-    const userId = result.lastInsertRowid as number;
-
-    db.prepare("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?").run(
-      userId,
-    );
-
-    const record = db
-      .prepare(
-        `
-          SELECT
-            id,
-            student_number AS studentNumber,
-            name,
-            CASE
-              WHEN semester >= 100000 THEN CAST(semester / 100 AS INTEGER)
-              ELSE semester
-            END AS semester,
-            public_id AS publicId,
-            role,
-            last_login_at AS lastLoginAt,
-            is_active AS isActive,
-            created_at AS createdAt,
-            updated_at AS updatedAt
-          FROM users
-          WHERE id = ?
-        `,
-      )
-      .get(userId);
-
-    cleanupExpiredSessions();
-    const session = createSession(userId);
-
-    const response = NextResponse.json(
-      { success: true, user: record },
-      { status: 201 },
-    );
-
-    response.cookies.set({
-      name: "session_token",
-      value: session.sessionToken,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
-    });
-
+  if (result.status === "invalid_role") {
     logUserRequest({
-      userId,
+      source: resolveRequestSource(null, clientIp),
       path: "/api/users",
       method: request.method,
-      status: 201,
-      metadata: { studentNumber, role },
-      ipAddress: clientIp,
+      status: 400,
+      metadata: { reason: "invalid_role", role: payload.role },
+      ipAddress: resolvedIp,
     });
+    return NextResponse.json(
+      { error: "역할 정보가 올바르지 않습니다." },
+      { status: 400 },
+    );
+  }
 
-    return response;
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message.includes("UNIQUE constraint failed")
-    ) {
-      logUserRequest({
-        path: "/api/users",
-        method: request.method,
-        status: 409,
-        metadata: { reason: "duplicate_student_number", studentNumber },
-        ipAddress: clientIp,
-      });
-      return NextResponse.json(
-        { error: "이미 존재하는 학번입니다." },
-        { status: 409 },
-      );
-    }
-
-    console.error("Failed to create user", error);
+  if (result.status === "duplicate_student_number") {
     logUserRequest({
+      source: resolveRequestSource(null, clientIp),
+      path: "/api/users",
+      method: request.method,
+      status: 409,
+      metadata: { reason: "duplicate_student_number", studentNumber: payload.studentNumber?.trim() },
+      ipAddress: resolvedIp,
+    });
+    return NextResponse.json(
+      { error: "이미 존재하는 학번입니다." },
+      { status: 409 },
+    );
+  }
+
+  if (result.status !== "success") {
+    logUserRequest({
+      source: resolveRequestSource(null, clientIp),
       path: "/api/users",
       method: request.method,
       status: 500,
-      metadata: { reason: "insert_failed", studentNumber },
-      ipAddress: clientIp,
+      metadata: { reason: "unexpected_error" },
+      ipAddress: resolvedIp,
     });
     return NextResponse.json(
       { error: "사용자 생성 중 오류가 발생했습니다." },
       { status: 500 },
     );
   }
+
+  const { user, session, role } = result;
+
+  const response = NextResponse.json(
+    { success: true, user },
+    { status: 201 },
+  );
+
+  response.cookies.set({
+    name: "session_token",
+    value: session.sessionToken,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+
+  logUserRequest({
+    source: resolveRequestSource(user.id, clientIp),
+    path: "/api/users",
+    method: request.method,
+    status: 201,
+    metadata: { studentNumber: user.studentNumber, role },
+    ipAddress: resolvedIp,
+  });
+
+  return response;
 }

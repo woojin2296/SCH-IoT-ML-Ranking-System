@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/auth-guard";
-import { getDb } from "@/lib/db";
-import { logUserRequest } from "@/lib/logs";
-import type { Notice } from "@/lib/notices";
+import { logUserRequest, resolveRequestSource } from "@/lib/services/logService";
+import {
+  createNoticeValidated,
+  deleteNoticeValidated,
+  getAllNotices,
+  updateNoticeValidated,
+} from "@/lib/services/noticeService";
 import { getRequestIp } from "@/lib/request";
 
 const ROUTE_PATH = "/api/admin/notices";
 
-type NoticeRow = {
-  id: number;
-  message: string;
-  isActive: number;
-  createdAt: string;
-  updatedAt: string;
-};
-
 type AdminUser = NonNullable<Awaited<ReturnType<typeof requireAdmin>>>;
-type DbInstance = ReturnType<typeof getDb>;
 
 type AdminRouteContext = {
   adminUser: AdminUser;
@@ -25,59 +20,37 @@ type AdminRouteContext = {
   log: (status: number, metadata?: Record<string, unknown>) => void;
 };
 
-const SELECT_NOTICE_BASE = `
-  SELECT
-    id,
-    message,
-    is_active AS isActive,
-    created_at AS createdAt,
-    updated_at AS updatedAt
-  FROM notices
-`;
-
-const toNotice = (row: NoticeRow): Notice => ({
-  ...row,
-  isActive: Boolean(row.isActive),
-});
-
 async function withAdmin(
   request: NextRequest,
   handler: (ctx: AdminRouteContext) => Promise<NextResponse>,
 ) {
   const clientIp = getRequestIp(request);
+  const resolvedIp = clientIp ?? "unknown";
   const adminUser = await requireAdmin();
 
   if (!adminUser) {
     logUserRequest({
+      source: resolveRequestSource(null, clientIp),
       path: ROUTE_PATH,
       method: request.method,
       status: 401,
       metadata: { reason: "unauthorized" },
-      ipAddress: clientIp,
+      ipAddress: resolvedIp,
     });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const log = (status: number, metadata?: Record<string, unknown>) =>
     logUserRequest({
-      userId: adminUser.id,
+      source: resolveRequestSource(adminUser.id, clientIp),
       path: ROUTE_PATH,
       method: request.method,
       status,
       metadata,
-      ipAddress: clientIp,
+      ipAddress: resolvedIp,
     });
 
-  return handler({ adminUser, clientIp, log });
-}
-
-function listNotices(db: DbInstance) {
-  return db.prepare(`${SELECT_NOTICE_BASE} ORDER BY updated_at DESC`).all() as NoticeRow[];
-}
-
-function fetchNoticeById(db: DbInstance, id: number) {
-  const row = db.prepare(`${SELECT_NOTICE_BASE} WHERE id = ?`).get(id) as NoticeRow | undefined;
-  return row ?? null;
+  return handler({ adminUser, clientIp: resolvedIp, log });
 }
 
 async function parseJsonOrBadRequest<T>(
@@ -131,8 +104,7 @@ function internalError(
 // - Returns all notices ordered by last update.
 export async function GET(request: NextRequest) {
   return withAdmin(request, async ({ log }) => {
-    const db = getDb();
-    const notices = listNotices(db).map(toNotice);
+    const notices = getAllNotices();
     log(200, { count: notices.length });
     return NextResponse.json({ notices });
   });
@@ -150,31 +122,19 @@ export async function POST(request: NextRequest) {
     );
     if (!parsed.ok) return parsed.response;
 
-    const message = parsed.data.message?.trim();
-    const isActive = parsed.data.isActive ?? true;
+    const result = createNoticeValidated(parsed.data);
 
-    if (!message) {
+    if (result.status === "invalid_message") {
       return badRequest(ctx, "missing_message", "공지 내용을 입력해주세요.");
     }
 
-    const db = getDb();
-    const insert = db.prepare(
-      `
-        INSERT INTO notices (message, is_active)
-        VALUES (?, ?)
-      `,
-    );
-    const result = insert.run(message, isActive ? 1 : 0);
-
-    const noticeRow = fetchNoticeById(db, Number(result.lastInsertRowid));
-    if (!noticeRow) {
+    if (result.status !== "success") {
+      console.error("Failed to create notice", result);
       return internalError(ctx, "insert_lookup_failed", "공지 저장 중 오류가 발생했습니다.");
     }
 
-    const notice = toNotice(noticeRow);
-    ctx.log(201, { id: notice.id });
-
-    return NextResponse.json({ notice }, { status: 201 });
+    ctx.log(201, { id: result.notice.id });
+    return NextResponse.json({ notice: result.notice }, { status: 201 });
   });
 }
 
@@ -191,55 +151,32 @@ export async function PATCH(request: NextRequest) {
     }>(request, ctx);
     if (!parsed.ok) return parsed.response;
 
-    const { id, message: rawMessage, isActive } = parsed.data;
+    const result = updateNoticeValidated(parsed.data);
 
-    if (typeof id !== "number" || !Number.isInteger(id) || id <= 0) {
-      return badRequest(ctx, "invalid_id", "유효한 공지 ID가 필요합니다.", { id });
+    if (result.status === "invalid_id") {
+      return badRequest(ctx, "invalid_id", "유효한 공지 ID가 필요합니다.", { id: parsed.data.id });
     }
 
-    const hasMessage = Object.prototype.hasOwnProperty.call(parsed.data, "message");
-    const hasActive = Object.prototype.hasOwnProperty.call(parsed.data, "isActive");
-
-    if (!hasMessage && !hasActive) {
+    if (result.status === "no_changes") {
       return badRequest(ctx, "no_changes", "변경할 항목이 없습니다.");
     }
 
-    const db = getDb();
-    const existing = fetchNoticeById(db, id);
-    if (!existing) {
-      return notFound(ctx, "not_found", "공지를 찾을 수 없습니다.", { id });
+    if (result.status === "invalid_message") {
+      return badRequest(ctx, "empty_message", "공지 내용을 입력해주세요.", { id: result.id });
     }
 
-    const fields: string[] = [];
-    const values: unknown[] = [];
-
-    if (hasMessage) {
-      const trimmed = typeof rawMessage === "string" ? rawMessage.trim() : "";
-      if (!trimmed) {
-        return badRequest(ctx, "empty_message", "공지 내용을 입력해주세요.", { id });
-      }
-      fields.push("message = ?");
-      values.push(trimmed);
+    if (result.status === "not_found") {
+      return notFound(ctx, "not_found", "공지를 찾을 수 없습니다.", { id: result.id });
     }
 
-    if (hasActive) {
-      fields.push("is_active = ?");
-      values.push(isActive ? 1 : 0);
-    }
-
-    values.push(id);
-
-    db.prepare(`UPDATE notices SET ${fields.join(", ")} WHERE id = ?`).run(values);
-
-    const updated = fetchNoticeById(db, id);
-    if (!updated) {
+    if (result.status !== "success") {
       return internalError(ctx, "update_lookup_failed", "공지 조회 중 오류가 발생했습니다.", {
-        id,
+        id: parsed.data.id,
       });
     }
 
-    ctx.log(200, { id });
-    return NextResponse.json({ notice: toNotice(updated) });
+    ctx.log(200, { id: result.notice.id });
+    return NextResponse.json({ notice: result.notice });
   });
 }
 
@@ -251,20 +188,23 @@ export async function DELETE(request: NextRequest) {
     const parsed = await parseJsonOrBadRequest<{ id?: number }>(request, ctx);
     if (!parsed.ok) return parsed.response;
 
-    const { id } = parsed.data;
+    const result = deleteNoticeValidated(parsed.data.id);
 
-    if (typeof id !== "number" || !Number.isInteger(id) || id <= 0) {
-      return badRequest(ctx, "invalid_id", "유효한 공지 ID가 필요합니다.", { id });
+    if (result.status === "invalid_id") {
+      return badRequest(ctx, "invalid_id", "유효한 공지 ID가 필요합니다.", { id: parsed.data.id });
     }
 
-    const db = getDb();
-    const result = db.prepare(`DELETE FROM notices WHERE id = ?`).run(id);
-
-    if (result.changes === 0) {
-      return notFound(ctx, "not_found", "공지를 찾을 수 없습니다.", { id });
+    if (result.status === "not_found") {
+      return notFound(ctx, "not_found", "공지를 찾을 수 없습니다.", { id: parsed.data.id });
     }
 
-    ctx.log(200, { action: "delete", id });
+    if (result.status !== "success") {
+      return internalError(ctx, "delete_failed", "공지 삭제 중 오류가 발생했습니다.", {
+        id: parsed.data.id,
+      });
+    }
+
+    ctx.log(200, { action: "delete", id: parsed.data.id });
     return NextResponse.json({ success: true });
   });
 }

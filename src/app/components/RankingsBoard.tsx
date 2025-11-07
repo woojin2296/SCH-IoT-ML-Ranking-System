@@ -41,9 +41,9 @@ export function RankingsBoard({
           내 결과 관리하기
         </Link>
       </div>
+      <RankingSummary selectedYear={selectedYear} myBestScore={myBestScore} myRank={myRank} />
       <YearSwitcher availableYears={availableYears} activeProject={activeProject} selectedYear={selectedYear} />
       <RankingTable rankings={rankings} sessionUserId={sessionUserId} />
-      <RankingSummary selectedYear={selectedYear} myBestScore={myBestScore} myRank={myRank} />
     </div>
   );
 }

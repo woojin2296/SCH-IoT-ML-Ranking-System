@@ -101,7 +101,7 @@ export default function SubmitResultForm() {
   };
 
   return (
-    <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10">
+    <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10 items-center">
       <AppHero />
       <AppNoticesList
         items={
