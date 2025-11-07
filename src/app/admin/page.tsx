@@ -2,8 +2,8 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import AppHero from "@/components/app/AppHero";
-import { AppNoticesList } from "@/components/app/AppNoticesList";
+import AppHero from "@/app/components/AppHero";
+import { AppNoticesList } from "@/app/components/AppNoticesList";
 import AdminDashboard from "./admin-dashboard";
 import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/services/sessionService";
 import { listUsersOrderedByCreation } from "@/lib/repositories/userRepository";

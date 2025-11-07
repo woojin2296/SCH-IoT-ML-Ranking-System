@@ -1,5 +1,5 @@
-import AppHero from "@/components/app/AppHero";
-import { AppNoticesList } from "@/components/app/AppNoticesList";
+import AppHero from "@/app/components/AppHero";
+import { AppNoticesList } from "@/app/components/AppNoticesList";
 import { projects } from "@/lib/projects";
 import type { RankingRecord } from "@/lib/services/evaluationScoreService";
 import { RankingsBoard } from "@/app/components/RankingsBoard";

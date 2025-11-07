@@ -1,5 +1,5 @@
-import AppHero from "@/components/app/AppHero";
-import { AppNoticesList } from "@/components/app/AppNoticesList";
+import AppHero from "@/app/components/AppHero";
+import { AppNoticesList } from "@/app/components/AppNoticesList";
 
 export type RankingErrorViewProps = {
   notices: string[];

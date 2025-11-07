@@ -2,13 +2,14 @@ import { randomBytes } from "crypto";
 
 import { hashPassword } from "@/lib/auth";
 import {
-  createUserRecord,
+  createUser,
   findUserById,
   findUserByStudentNumber as findUserByStudentNumberRepo,
+  isEmailTaken,
   isPublicIdTaken,
   updateUserById,
-  type UserRecord,
 } from "@/lib/repositories/userRepository";
+import type { UserRecord } from "@/lib/type/UserRecord";
 import { establishUserSession } from "@/lib/services/authService";
 
 const ALLOWED_ROLES = new Set(["user", "admin"]);
@@ -16,6 +17,7 @@ const ALLOWED_ROLES = new Set(["user", "admin"]);
 export type RegisterUserPayload = {
   name?: string;
   studentNumber?: string;
+  email?: string;
   password?: string;
   role?: string;
 };
@@ -24,8 +26,10 @@ export type RegisterUserResult =
   | { status: "missing_fields" }
   | { status: "invalid_name" }
   | { status: "invalid_student_number" }
+  | { status: "invalid_email" }
   | { status: "invalid_role" }
   | { status: "duplicate_student_number" }
+  | { status: "duplicate_email" }
   | {
       status: "success";
       user: UserRecord;
@@ -36,6 +40,7 @@ export type RegisterUserResult =
 export async function registerUser(payload: RegisterUserPayload): Promise<RegisterUserResult> {
   const name = payload.name?.trim();
   const studentNumber = payload.studentNumber?.trim();
+  const emailRaw = payload.email?.trim();
   const password = payload.password;
   const roleRaw = payload.role?.trim().toLowerCase() ?? "user";
   const role = ALLOWED_ROLES.has(roleRaw) ? roleRaw : "user";
@@ -56,6 +61,22 @@ export async function registerUser(payload: RegisterUserPayload): Promise<Regist
     return { status: "invalid_role" };
   }
 
+  let email: string | null | undefined = undefined;
+  if (emailRaw != null) {
+    if (emailRaw === "") {
+      email = null;
+    } else {
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw);
+      if (!emailOk) {
+        return { status: "invalid_email" };
+      }
+      if (isEmailTaken(emailRaw)) {
+        return { status: "duplicate_email" };
+      }
+      email = emailRaw;
+    }
+  }
+
   const generatePublicId = () => randomBytes(4).toString("hex");
   let publicId = generatePublicId();
   while (isPublicIdTaken(publicId)) {
@@ -66,8 +87,9 @@ export async function registerUser(payload: RegisterUserPayload): Promise<Regist
 
   try {
     const currentYear = new Date().getFullYear();
-    const userId = createUserRecord({
+    const userId = createUser({
       studentNumber,
+      email: email ?? null,
       passwordHash,
       name,
       publicId,
@@ -90,7 +112,12 @@ export async function registerUser(payload: RegisterUserPayload): Promise<Regist
     };
   } catch (error) {
     if (error instanceof Error && error.message.includes("UNIQUE constraint failed")) {
-      return { status: "duplicate_student_number" };
+      if (error.message.includes("users.student_number")) {
+        return { status: "duplicate_student_number" };
+      }
+      if (error.message.includes("users.email")) {
+        return { status: "duplicate_email" };
+      }
     }
     throw error;
   }
@@ -100,6 +127,7 @@ export type AdminUpdateUserPayload = {
   id?: number;
   name?: string;
   studentNumber?: string;
+  email?: string | null;
   role?: string;
   semester?: number;
 };
@@ -108,14 +136,16 @@ export type AdminUpdateUserResult =
   | { status: "invalid_id" }
   | { status: "missing_name" }
   | { status: "invalid_student_number" }
+  | { status: "invalid_email" }
   | { status: "invalid_role" }
   | { status: "invalid_semester"; semester: number }
   | { status: "duplicate_student_number" }
+  | { status: "duplicate_email" }
   | { status: "not_found" }
   | { status: "success"; user: UserRecord };
 
 export function updateUserViaAdmin(payload: AdminUpdateUserPayload): AdminUpdateUserResult {
-  const { id, name, studentNumber, role, semester } = payload;
+  const { id, name, studentNumber, email: emailInput, role, semester } = payload;
 
   if (typeof id !== "number" || !Number.isInteger(id) || id <= 0) {
     return { status: "invalid_id" };
@@ -136,6 +166,20 @@ export function updateUserViaAdmin(payload: AdminUpdateUserPayload): AdminUpdate
     return { status: "invalid_role" };
   }
 
+  let normalizedEmail: string | null | undefined = undefined;
+  if (Object.prototype.hasOwnProperty.call(payload, "email")) {
+    if (emailInput === null || emailInput === undefined || emailInput === "") {
+      normalizedEmail = null;
+    } else {
+      const emailStr = String(emailInput).trim();
+      const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
+      if (!emailOk) {
+        return { status: "invalid_email" };
+      }
+      normalizedEmail = emailStr;
+    }
+  }
+
   const currentYear = new Date().getFullYear();
   const normalizedSemester = semester ?? currentYear;
   if (
@@ -153,6 +197,7 @@ export function updateUserViaAdmin(payload: AdminUpdateUserPayload): AdminUpdate
       studentNumber: trimmedStudentNumber,
       role: normalizedRole,
       semester: normalizedSemester,
+      email: normalizedEmail,
     });
 
     if (!updated) {
@@ -167,7 +212,12 @@ export function updateUserViaAdmin(payload: AdminUpdateUserPayload): AdminUpdate
     return { status: "success", user };
   } catch (error) {
     if (error instanceof Error && error.message.includes("UNIQUE")) {
-      return { status: "duplicate_student_number" };
+      if (error.message.includes("users.student_number")) {
+        return { status: "duplicate_student_number" };
+      }
+      if (error.message.includes("users.email")) {
+        return { status: "duplicate_email" };
+      }
     }
     throw error;
   }

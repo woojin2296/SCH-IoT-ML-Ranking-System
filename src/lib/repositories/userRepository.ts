@@ -1,13 +1,12 @@
 import { getDb } from "@/lib/db";
+import { UserRecord } from "../type/UserRecord";
 
 const baseUserProjection = `
   id,
   student_number AS studentNumber,
+  email,
   name,
-  CASE
-    WHEN semester >= 100000 THEN CAST(semester / 100 AS INTEGER)
-    ELSE semester
-  END AS semester,
+  semester AS semester,
   public_id AS publicId,
   role,
   last_login_at AS lastLoginAt,
@@ -16,24 +15,43 @@ const baseUserProjection = `
   updated_at AS updatedAt
 `;
 
-export type UserRecord = {
-  id: number;
-  studentNumber: string;
-  name: string | null;
-  semester: number;
-  publicId: string;
-  role: string;
-  lastLoginAt: string | null;
-  isActive: number;
-  createdAt: string;
-  updatedAt: string;
-};
-
 export type UserWithPasswordRecord = UserRecord & {
   passwordHash: string;
 };
 
-export function listUsersOrderedByCreation(): UserRecord[] {
+// Create
+export function createUser(input: {
+  studentNumber: string;
+  email?: string | null;
+  passwordHash: string;
+  name: string;
+  publicId: string;
+  role: string;
+  semester: number;
+}): number {
+  const db = getDb();
+  const result = db
+    .prepare(
+      `
+        INSERT INTO users (student_number, email, password_hash, name, public_id, role, semester)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+    )
+    .run(
+      input.studentNumber,
+      input.email ?? null,
+      input.passwordHash,
+      input.name,
+      input.publicId,
+      input.role,
+      input.semester,
+    );
+
+  return Number(result.lastInsertRowid);
+}
+
+// Read
+export function findAllUsers(): UserRecord[] {
   const db = getDb();
   return db
     .prepare(
@@ -107,34 +125,13 @@ export function isPublicIdTaken(publicId: string): boolean {
   return Boolean(exists);
 }
 
-export function createUserRecord(input: {
-  studentNumber: string;
-  passwordHash: string;
-  name: string;
-  publicId: string;
-  role: string;
-  semester: number;
-}): number {
+export function isEmailTaken(email: string): boolean {
   const db = getDb();
-  const result = db
-    .prepare(
-      `
-        INSERT INTO users (student_number, password_hash, name, public_id, role, semester)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `,
-    )
-    .run(
-      input.studentNumber,
-      input.passwordHash,
-      input.name,
-      input.publicId,
-      input.role,
-      input.semester,
-    );
-
-  return Number(result.lastInsertRowid);
+  const exists = db.prepare("SELECT 1 FROM users WHERE email = ? LIMIT 1").get(email);
+  return Boolean(exists);
 }
 
+// Update
 export function updateUserLastLogin(userId: number) {
   const db = getDb();
   db.prepare("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?").run(userId);
@@ -146,17 +143,25 @@ export function updateUserById(input: {
   studentNumber: string;
   role: string;
   semester: number;
+  email?: string | null;
 }): boolean {
   const db = getDb();
   const result = db
     .prepare(
       `
         UPDATE users
-        SET name = ?, student_number = ?, role = ?, semester = ?
+        SET name = ?, student_number = ?, role = ?, semester = ?, email = ?
         WHERE id = ?
       `,
     )
-    .run(input.name, input.studentNumber, input.role, input.semester, input.id);
+    .run(input.name, input.studentNumber, input.role, input.semester, input.email ?? null, input.id);
 
+  return result.changes > 0;
+}
+
+// Delete
+export function deleteUserById(id: number): boolean {
+  const db = getDb();
+  const result = db.prepare("DELETE FROM users WHERE id = ?").run(id);
   return result.changes > 0;
 }

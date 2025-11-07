@@ -45,6 +45,7 @@ export async function PATCH(request: NextRequest) {
     id?: number;
     name?: string;
     studentNumber?: string;
+    email?: string | null;
     role?: string;
     semester?: number;
   };
@@ -74,6 +75,11 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "학번은 8자리 숫자여야 합니다." }, { status: 400 });
   }
 
+  if (result.status === "invalid_email") {
+    logRequest(400, { reason: "invalid_email", id: payload.id });
+    return NextResponse.json({ error: "이메일 형식이 올바르지 않습니다." }, { status: 400 });
+  }
+
   if (result.status === "invalid_role") {
     logRequest(400, { reason: "invalid_role", id: payload.id });
     return NextResponse.json({ error: "역할 정보가 올바르지 않습니다." }, { status: 400 });
@@ -87,6 +93,11 @@ export async function PATCH(request: NextRequest) {
   if (result.status === "duplicate_student_number") {
     logRequest(409, { reason: "duplicate_student_number", id: payload.id });
     return NextResponse.json({ error: "중복된 학번입니다." }, { status: 409 });
+  }
+
+  if (result.status === "duplicate_email") {
+    logRequest(409, { reason: "duplicate_email", id: payload.id });
+    return NextResponse.json({ error: "중복된 이메일입니다." }, { status: 409 });
   }
 
   if (result.status === "not_found") {
