@@ -1,10 +1,6 @@
-import { randomUUID } from "crypto";
+import { getDb } from "@/lib/db";
 
-import { getDb } from "./db";
-
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
-
-export type SessionUser = {
+export type SessionUserRecord = {
   id: number;
   studentNumber: string;
   name: string | null;
@@ -17,42 +13,32 @@ export type SessionUser = {
   updatedAt: string;
 };
 
-export function createSession(userId: number) {
+export function insertSession(userId: number, sessionToken: string, expiresAt: string) {
   const db = getDb();
-  const sessionToken = randomUUID();
-  const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000).toISOString();
-
   db.prepare(
     `
       INSERT INTO sessions (user_id, session_token, expires_at)
       VALUES (?, ?, ?)
     `,
   ).run(userId, sessionToken, expiresAt);
-
-  return {
-    sessionToken,
-    expiresAt,
-  };
 }
 
-export function cleanupExpiredSessions() {
+export function deleteExpiredSessions() {
   const db = getDb();
   db.prepare("DELETE FROM sessions WHERE expires_at <= CURRENT_TIMESTAMP").run();
 }
 
-export function revokeSessionsForUser(userId: number) {
+export function deleteSessionsByUserId(userId: number) {
   const db = getDb();
   db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
 }
 
-export function deleteSession(sessionToken: string) {
+export function deleteSessionByToken(sessionToken: string) {
   const db = getDb();
   db.prepare("DELETE FROM sessions WHERE session_token = ?").run(sessionToken);
 }
 
-export function getUserBySessionToken(
-  sessionToken: string,
-): SessionUser | null {
+export function findActiveSessionUser(sessionToken: string): SessionUserRecord | null {
   const db = getDb();
   const record = db
     .prepare(
@@ -78,7 +64,7 @@ export function getUserBySessionToken(
         LIMIT 1
       `,
     )
-    .get(sessionToken) as SessionUser | undefined;
+    .get(sessionToken) as SessionUserRecord | undefined;
 
   return record ?? null;
 }

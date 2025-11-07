@@ -4,9 +4,9 @@ import { redirect } from "next/navigation";
 
 import AppHero from "@/components/app/AppHero";
 import { AppNoticesList } from "@/components/app/AppNoticesList";
-import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/session";
+import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/services/sessionService";
 import { getBaseUrl } from "@/lib/url";
-import { getActiveNotices } from "@/lib/notices";
+import { getActiveNotices } from "@/lib/services/noticeService";
 
 import MyResultsTable from "./my-results-table";
 
@@ -122,7 +122,7 @@ export default async function MyResultsPage({
   const notices = getActiveNotices();
 
   return (
-    <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10">
+    <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10 items-center">
       <AppHero />
       <AppNoticesList
         items={

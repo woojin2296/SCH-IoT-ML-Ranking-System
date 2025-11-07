@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 
-import { logUserRequest } from "@/lib/logs";
+import { logUserRequest, resolveRequestSource } from "@/lib/services/logService";
 import { getRequestIp } from "@/lib/request";
 
 export type RequestLogger = (
@@ -16,15 +16,17 @@ export function createRequestLogger(
   defaultUserId?: number | null,
 ): RequestLogger {
   const ipAddress = getRequestIp(request);
+  const fallbackIp = ipAddress ?? "unknown";
 
   return (status, metadata, overrideUserId) => {
+    const resolvedUserId = overrideUserId ?? defaultUserId ?? null;
     logUserRequest({
-      userId: overrideUserId ?? defaultUserId ?? null,
+      source: resolveRequestSource(resolvedUserId, ipAddress),
       path,
       method,
       status,
       metadata,
-      ipAddress: overrideUserId ?? defaultUserId ? ipAddress : ipAddress ?? "unknown",
+      ipAddress: fallbackIp,
     });
   };
 }

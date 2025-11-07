@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useRef, useState, useCallback, type ChangeEvent, type FormEvent } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 
 import AppHero from "@/components/app/AppHero"
 import { AppNoticesList } from "@/components/app/AppNoticesList"
@@ -26,6 +26,7 @@ type UserRecord = {
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [step, setStep] = useState<Step>("studentNumber")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -41,6 +42,17 @@ export default function LoginPage() {
   const passwordRef = useRef<HTMLInputElement>(null)
   const registerNameRef = useRef<HTMLInputElement>(null)
   const [noticeMessages, setNoticeMessages] = useState<string[]>([])
+  const redirectParam = searchParams.get("redirect") ?? "/"
+  const redirectPath = redirectParam.startsWith("/") ? redirectParam : "/"
+
+  const navigateToTarget = useCallback((target: string) => {
+    const path = target.startsWith("/") ? target : "/"
+    router.replace(path)
+    router.refresh()
+    if (typeof window !== "undefined") {
+      window.location.href = path
+    }
+  }, [router])
 
   const resetPasswordFields = () => {
     setPassword("")
@@ -128,6 +140,7 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           studentNumber,
           password,
@@ -144,8 +157,7 @@ export default function LoginPage() {
         return
       }
 
-      router.replace("/")
-      router.refresh()
+      navigateToTarget(redirectPath)
     } catch (err) {
       console.error(err)
       setError(err instanceof Error ? err.message : "로그인 중 오류가 발생했습니다.")
@@ -185,6 +197,7 @@ export default function LoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
           name: trimmedName,
           studentNumber,
@@ -205,8 +218,7 @@ export default function LoginPage() {
 
       setUser(data.user ?? null)
       resetPasswordFields()
-      router.replace("/")
-      router.refresh()
+      navigateToTarget(redirectPath)
     } catch (err) {
       console.error(err)
       setError(err instanceof Error ? err.message : "회원가입 중 오류가 발생했습니다.")

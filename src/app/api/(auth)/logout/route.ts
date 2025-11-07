@@ -5,8 +5,8 @@ import {
   cleanupExpiredSessions,
   deleteSession,
   getUserBySessionToken,
-} from "@/lib/session";
-import { logUserRequest } from "@/lib/logs";
+} from "@/lib/services/sessionService";
+import { logUserRequest, resolveRequestSource } from "@/lib/services/logService";
 import { getRequestIp } from "@/lib/request";
 
 // POST /api/logout
@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
   const sessionToken = cookieStore.get("session_token")?.value;
   const sessionUser = sessionToken ? getUserBySessionToken(sessionToken) : null;
   const clientIp = getRequestIp(request);
+  const resolvedIp = clientIp ?? "unknown";
 
   if (sessionToken) {
     deleteSession(sessionToken);
@@ -35,11 +36,11 @@ export async function POST(request: NextRequest) {
   });
 
   logUserRequest({
-    userId: sessionUser?.id ?? null,
+    source: resolveRequestSource(sessionUser?.id ?? null, clientIp),
     path: "/api/logout",
     method: request.method,
     status: 303,
-    ipAddress: clientIp,
+    ipAddress: resolvedIp,
   });
 
   return response;

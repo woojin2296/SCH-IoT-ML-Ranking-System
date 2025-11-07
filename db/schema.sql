@@ -63,17 +63,15 @@ END;
 
 CREATE TABLE IF NOT EXISTS request_logs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER,
+  source TEXT NOT NULL,
   path TEXT NOT NULL,
   method TEXT NOT NULL,
   status INTEGER,
   ip_address TEXT,
   metadata TEXT,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_request_logs_user_id ON request_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_request_logs_created_at ON request_logs(created_at);
 
 CREATE TABLE IF NOT EXISTS evaluation_logs (
@@ -107,4 +105,18 @@ BEGIN
   UPDATE notices
   SET updated_at = CURRENT_TIMESTAMP
   WHERE id = NEW.id;
+END;
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TRIGGER IF NOT EXISTS app_settings_updated_at_trigger
+AFTER UPDATE ON app_settings
+BEGIN
+  UPDATE app_settings
+  SET updated_at = CURRENT_TIMESTAMP
+  WHERE key = NEW.key;
 END;

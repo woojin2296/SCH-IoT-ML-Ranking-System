@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getActiveNotices } from "@/lib/notices";
-import { logUserRequest } from "@/lib/logs";
+import { getActiveNotices } from "@/lib/services/noticeService";
+import { logUserRequest, resolveRequestSource } from "@/lib/services/logService";
 import { getRequestIp } from "@/lib/request";
 
 // GET /api/notices
@@ -11,10 +11,11 @@ export async function GET(request: NextRequest) {
   const notices = getActiveNotices();
   const clientIp = getRequestIp(request);
   logUserRequest({
+    source: resolveRequestSource(null, clientIp),
     path: "/api/notices",
     method: "GET",
     status: 200,
-    ipAddress: clientIp,
+    ipAddress: clientIp ?? "unknown",
   });
   return NextResponse.json({ notices });
 }

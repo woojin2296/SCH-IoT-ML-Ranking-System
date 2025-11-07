@@ -4,7 +4,6 @@ import path from "path";
 
 const dbPath = path.join(process.cwd(), "db", "app.db");
 
-// Create a singleton database connection for reuse across requests.
 let db: Database | null = null;
 
 export function getDb(): Database {
@@ -13,6 +12,5 @@ export function getDb(): Database {
       fileMustExist: true,
     });
   }
-
   return db;
 }

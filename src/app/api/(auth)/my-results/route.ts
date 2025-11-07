@@ -3,22 +3,17 @@ import { randomUUID } from "crypto";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 
-import { getDb } from "@/lib/db";
 import { requireSessionUser } from "@/lib/auth-guard";
-import { logEvaluationChange } from "@/lib/logs";
+import { logEvaluationChange } from "@/lib/services/evaluationLogService";
 import { ALLOWED_UPLOAD_EXTENSIONS, resolveWithinUploadRoot, resolveStoredFilePath } from "@/lib/uploads";
 import { createRequestLogger } from "@/lib/request-logger";
 import { getSeoulTimestamp } from "@/lib/time";
-
-type ResultRow = {
-  id: number;
-  projectNumber: number;
-  score: number;
-  evaluatedAt: string;
-  fileName: string | null;
-  fileSize: number | null;
-  hasFile: boolean | number;
-};
+import {
+  createEvaluationScore,
+  getEvaluationScoreSummaryForUser,
+  getEvaluationScoresForUser,
+  removeEvaluationScoreForUser,
+} from "@/lib/services/evaluationScoreService";
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -48,30 +43,16 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const db = getDb();
+  const results = getEvaluationScoresForUser(sessionUser.id, projectNumber);
 
-  const sql = `
-    SELECT
-      id,
-      project_number AS projectNumber,
-      score,
-      evaluated_at AS evaluatedAt,
-      file_name AS fileName,
-      file_size AS fileSize,
-      CASE WHEN file_path IS NOT NULL THEN 1 ELSE 0 END AS hasFile
-    FROM evaluation_scores
-    WHERE user_id = ?
-      ${projectNumber !== null ? "AND project_number = ?" : ""}
-    ORDER BY project_number ASC, evaluated_at DESC
-  `;
-
-  const results = projectNumber !== null
-    ? db.prepare(sql).all(sessionUser.id, projectNumber)
-    : db.prepare(sql).all(sessionUser.id);
-
-  const normalized = (results as ResultRow[]).map((row) => ({
-    ...row,
-    hasFile: Boolean(row.hasFile),
+  const normalized = results.map((row) => ({
+    id: row.id,
+    projectNumber: row.projectNumber,
+    score: row.score,
+    evaluatedAt: row.evaluatedAt,
+    fileName: row.fileName,
+    fileSize: row.fileSize,
+    hasFile: row.hasFile,
   }));
 
   logRequest(200, { projectNumber });
@@ -154,8 +135,6 @@ export async function POST(request: NextRequest) {
   const relativePath = path.join(relativeDirectory, storedFileName);
   const fullStoredPath = resolveWithinUploadRoot(relativePath);
 
-  const db = getDb();
-
   await mkdir(path.dirname(fullStoredPath), { recursive: true });
 
   const arrayBuffer = await file.arrayBuffer();
@@ -188,37 +167,21 @@ export async function POST(request: NextRequest) {
 
     const evaluatedAt = getSeoulTimestamp();
 
-    const insert = db.prepare(
-      `
-        INSERT INTO evaluation_scores (
-          user_id,
-          project_number,
-          score,
-          file_path,
-          file_name,
-          file_type,
-          file_size,
-          evaluated_at
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-    );
-
-    const result = insert.run(
-      sessionUser.id,
+    const insertedId = createEvaluationScore({
+      userId: sessionUser.id,
       projectNumber,
       score,
-      relativePath,
-      originalFileName,
-      inferredFileType,
-      file.size,
+      filePath: relativePath,
+      fileName: originalFileName,
+      fileType: inferredFileType,
+      fileSize: file.size,
       evaluatedAt,
-    );
+    });
 
     logEvaluationChange({
       actorUserId: sessionUser.id,
       action: "create",
-      scoreId: Number(result.lastInsertRowid),
+      scoreId: insertedId,
       targetUserId: sessionUser.id,
       projectNumber,
       score,
@@ -291,24 +254,7 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  const db = getDb();
-
-  const existing = db
-    .prepare(
-      `
-        SELECT
-          id,
-          user_id AS userId,
-          project_number AS projectNumber,
-          score,
-          file_path AS filePath
-        FROM evaluation_scores
-        WHERE id = ? AND user_id = ?
-      `,
-    )
-    .get(id, sessionUser.id) as
-    | { id: number; userId: number; projectNumber: number; score: number; filePath: string | null }
-    | undefined;
+  const existing = getEvaluationScoreSummaryForUser(id, sessionUser.id);
 
   if (!existing) {
     logRequest(404, { reason: "not_found", id });
@@ -319,14 +265,15 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    const stmt = db.prepare(
-      `
-        DELETE FROM evaluation_scores
-        WHERE id = ? AND user_id = ?
-      `,
-    );
+    const removed = removeEvaluationScoreForUser(id, sessionUser.id);
 
-    stmt.run(id, sessionUser.id);
+    if (!removed) {
+      logRequest(500, { action: "delete", scoreId: existing.id, reason: "delete_failed" });
+      return NextResponse.json(
+        { error: "결과 삭제 중 오류가 발생했습니다." },
+        { status: 500 },
+      );
+    }
 
     const absoluteStoredPath = resolveStoredFilePath(existing.filePath ?? null);
     if (absoluteStoredPath) {

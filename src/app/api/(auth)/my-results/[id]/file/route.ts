@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 
-import { getDb } from "@/lib/db";
 import { requireSessionUser } from "@/lib/auth-guard";
 import { resolveStoredFilePath } from "@/lib/uploads";
 import { createRequestLogger } from "@/lib/request-logger";
+import { getEvaluationScoreFileMeta } from "@/lib/services/evaluationScoreService";
 
 // GET /api/my-results/[id]/file
 // - Requires authenticated session (owner or admin).
@@ -37,30 +37,7 @@ export async function GET(
     return NextResponse.json({ error: "유효하지 않은 기록 ID입니다." }, { status: 400 });
   }
 
-  const db = getDb();
-  const record = db
-    .prepare(
-      `
-        SELECT
-          es.user_id AS userId,
-          es.file_path AS filePath,
-          es.file_name AS fileName,
-          es.file_type AS fileType,
-          es.file_size AS fileSize
-        FROM evaluation_scores es
-        WHERE es.id = ?
-        LIMIT 1
-      `,
-    )
-    .get(recordId) as
-    | {
-        userId: number;
-        filePath: string | null;
-        fileName: string | null;
-        fileType: string | null;
-        fileSize: number | null;
-      }
-    | undefined;
+  const record = getEvaluationScoreFileMeta(recordId);
 
   if (!record || !record.filePath) {
     logRequest(404, { reason: "not_found", scoreId: recordId });
