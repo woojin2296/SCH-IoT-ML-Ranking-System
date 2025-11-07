@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { logUserRequest, resolveRequestSource } from "@/lib/services/logService";
+import { logUserRequest, resolveRequestSource } from "@/lib/services/requestLogService";
 import { getRequestIp } from "@/lib/request";
 import { registerUser } from "@/lib/services/userService";
 
@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 type CreateUserPayload = {
   name: string;
   studentNumber: string;
+  email?: string;
   password: string;
   role?: string;
 };
@@ -118,6 +119,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (result.status === "invalid_email") {
+    logUserRequest({
+      source: resolveRequestSource(null, clientIp),
+      path: "/api/users",
+      method: request.method,
+      status: 400,
+      metadata: { reason: "invalid_email", email: payload.email },
+      ipAddress: resolvedIp,
+    });
+    return NextResponse.json(
+      { error: "이메일 형식이 올바르지 않습니다." },
+      { status: 400 },
+    );
+  }
+
   if (result.status === "duplicate_student_number") {
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
@@ -129,6 +145,21 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(
       { error: "이미 존재하는 학번입니다." },
+      { status: 409 },
+    );
+  }
+
+  if (result.status === "duplicate_email") {
+    logUserRequest({
+      source: resolveRequestSource(null, clientIp),
+      path: "/api/users",
+      method: request.method,
+      status: 409,
+      metadata: { reason: "duplicate_email", email: payload.email?.trim() },
+      ipAddress: resolvedIp,
+    });
+    return NextResponse.json(
+      { error: "이미 등록된 이메일입니다." },
       { status: 409 },
     );
   }

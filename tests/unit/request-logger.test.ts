@@ -1,7 +1,7 @@
 import { createRequestLogger } from '@/lib/request-logger';
-import { logUserRequest } from '@/lib/services/logService';
+import { logUserRequest } from '@/lib/services/requestLogService';
 
-jest.mock('@/lib/services/logService', () => ({
+jest.mock('@/lib/services/requestLogService', () => ({
   logUserRequest: jest.fn(),
   resolveRequestSource: (userId: number | null | undefined, ip?: string | null) =>
     userId != null ? `user:${userId}` : `ip:${ip ?? 'unknown'}`,

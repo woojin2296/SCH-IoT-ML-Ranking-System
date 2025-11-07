@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/auth-guard";
-import { logUserRequest, resolveRequestSource } from "@/lib/services/logService";
+import { logUserRequest, resolveRequestSource } from "@/lib/services/requestLogService";
 import {
   createNoticeValidated,
   deleteNoticeValidated,

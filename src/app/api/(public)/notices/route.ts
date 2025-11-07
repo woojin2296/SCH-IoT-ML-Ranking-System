@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getActiveNotices } from "@/lib/services/noticeService";
-import { logUserRequest, resolveRequestSource } from "@/lib/services/logService";
+import { logUserRequest, resolveRequestSource } from "@/lib/services/requestLogService";
 import { getRequestIp } from "@/lib/request";
 
 // GET /api/notices

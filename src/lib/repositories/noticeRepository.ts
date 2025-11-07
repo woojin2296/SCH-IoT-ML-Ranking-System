@@ -1,14 +1,44 @@
 import { getDb } from "@/lib/db";
+import { NoticeRecord } from "../type/NoticeRecord";
 
-export type NoticeRow = {
-  id: number;
-  message: string;
-  isActive: number;
-  createdAt: string;
-  updatedAt: string;
-};
+// To Codex : Do not change this file except when i tell you to.
 
-export function listActiveNoticeRows(): NoticeRow[] {
+// Create
+export function insertNotice(input: { message: string; isActive: boolean }): number {
+  const db = getDb();
+  const result = db
+    .prepare(
+      `
+        INSERT INTO notices (message, is_active)
+        VALUES (?, ?)
+      `,
+    )
+    .run(input.message, input.isActive ? 1 : 0);
+
+  return Number(result.lastInsertRowid);
+}
+
+// Read
+export function findAllNotices(): NoticeRecord[] {
+  const db = getDb();
+    return db
+      .prepare(
+        `
+          SELECT
+            id,
+            message,
+            is_active AS isActive,
+            created_at AS createdAt,
+            updated_at AS updatedAt
+          FROM notices
+          ORDER BY updated_at DESC
+        `,
+      )
+    .all() as NoticeRecord[];
+}
+
+// Used!! Do not change!!
+export function findAllActiveNotices(): NoticeRecord[] {
   const db = getDb();
   return db
     .prepare(
@@ -24,28 +54,10 @@ export function listActiveNoticeRows(): NoticeRow[] {
         ORDER BY updated_at DESC
       `,
     )
-    .all() as NoticeRow[];
+    .all() as NoticeRecord[];
 }
 
-export function listAllNoticeRows(): NoticeRow[] {
-  const db = getDb();
-  return db
-    .prepare(
-      `
-        SELECT
-          id,
-          message,
-          is_active AS isActive,
-          created_at AS createdAt,
-          updated_at AS updatedAt
-        FROM notices
-        ORDER BY updated_at DESC
-      `,
-    )
-    .all() as NoticeRow[];
-}
-
-export function findNoticeRowById(id: number): NoticeRow | null {
+export function findNoticeById(id: number): NoticeRecord | null {
   const db = getDb();
   const row = db
     .prepare(
@@ -61,26 +73,13 @@ export function findNoticeRowById(id: number): NoticeRow | null {
         LIMIT 1
       `,
     )
-    .get(id) as NoticeRow | undefined;
+    .get(id) as NoticeRecord | undefined;
 
   return row ?? null;
 }
 
-export function insertNoticeRow(input: { message: string; isActive: boolean }): number {
-  const db = getDb();
-  const result = db
-    .prepare(
-      `
-        INSERT INTO notices (message, is_active)
-        VALUES (?, ?)
-      `,
-    )
-    .run(input.message, input.isActive ? 1 : 0);
-
-  return Number(result.lastInsertRowid);
-}
-
-export function updateNoticeRowById(
+// Update
+export function updateNoticeById(
   id: number,
   fields: { message?: string; isActive?: boolean },
 ): number {
@@ -102,13 +101,13 @@ export function updateNoticeRowById(
   }
 
   values.push(id);
-
   const db = getDb();
   const result = db.prepare(`UPDATE notices SET ${updates.join(", ")} WHERE id = ?`).run(values);
   return result.changes ?? 0;
 }
 
-export function deleteNoticeRowById(id: number): number {
+// Delete
+export function deleteNoticeRecordById(id: number): number {
   const db = getDb();
   const result = db.prepare("DELETE FROM notices WHERE id = ?").run(id);
   return result.changes ?? 0;

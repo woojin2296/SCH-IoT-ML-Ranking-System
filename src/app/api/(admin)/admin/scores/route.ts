@@ -3,7 +3,7 @@ import { unlink } from "fs/promises";
 
 import { requireAdmin } from "@/lib/auth-guard";
 import { logEvaluationChange } from "@/lib/services/evaluationLogService";
-import { logUserRequest, resolveRequestSource } from "@/lib/services/logService";
+import { logUserRequest, resolveRequestSource } from "@/lib/services/requestLogService";
 import { resolveStoredFilePath } from "@/lib/uploads";
 import { getRequestIp } from "@/lib/request";
 import {

@@ -6,7 +6,7 @@ import {
   deleteSession,
   getUserBySessionToken,
 } from "@/lib/services/sessionService";
-import { logUserRequest, resolveRequestSource } from "@/lib/services/logService";
+import { logUserRequest, resolveRequestSource } from "@/lib/services/requestLogService";
 import { getRequestIp } from "@/lib/request";
 
 // POST /api/logout

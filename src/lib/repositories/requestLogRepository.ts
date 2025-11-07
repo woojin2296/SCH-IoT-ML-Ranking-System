@@ -1,14 +1,7 @@
 import { getDb } from "@/lib/db";
+import { CreateRequestLogInput, RequestLogRecord } from "../type/RequestLog";
 
-export type CreateRequestLogInput = {
-  source: string;
-  path: string;
-  method: string;
-  status?: number | null;
-  metadata?: string | null;
-  ipAddress?: string | null;
-};
-
+// Create
 export function insertRequestLog(entry: CreateRequestLogInput) {
   const db = getDb();
   db.prepare(
@@ -33,46 +26,52 @@ export function insertRequestLog(entry: CreateRequestLogInput) {
   );
 }
 
-export type RequestLogWithUserRow = {
-  id: number;
-  source: string;
-  path: string;
-  method: string;
-  status: number | null;
-  metadata: string | null;
-  ipAddress: string | null;
-  createdAt: string;
-  sourceUserId: number | null;
-  userPublicId: string | null;
-  userStudentNumber: string | null;
-  name: string | null;
-};
-
-export function listRequestLogsWithUsers(): RequestLogWithUserRow[] {
+// Read
+export function listRequestLogs(options?: { limit?: number; beforeId?: number }) {
   const db = getDb();
-  return db
-    .prepare(
-      `
+  const limit = options?.limit ?? 100;
+  const beforeId = options?.beforeId ?? null;
+
+  const query = beforeId
+    ? `
         SELECT
-          rl.id,
-          rl.source,
-          rl.path,
-          rl.method,
-          rl.status,
-          rl.metadata,
-          rl.ip_address AS ipAddress,
-          rl.created_at AS createdAt,
-          CASE
-            WHEN rl.source LIKE 'user:%' THEN CAST(SUBSTR(rl.source, 6) AS INTEGER)
-            ELSE NULL
-          END AS sourceUserId,
-          u.public_id AS userPublicId,
-          u.student_number AS userStudentNumber,
-          u.name
-        FROM request_logs rl
-        LEFT JOIN users u ON rl.source LIKE 'user:%' AND u.id = CAST(SUBSTR(rl.source, 6) AS INTEGER)
-        ORDER BY rl.created_at DESC
-      `,
-    )
-    .all() as RequestLogWithUserRow[];
+          id,
+          source,
+          path,
+          method,
+          status,
+          metadata,
+          ip_address AS ipAddress,
+          created_at AS createdAt
+        FROM request_logs
+        WHERE id < ?
+        ORDER BY id DESC
+        LIMIT ?
+      `
+    : `
+        SELECT
+          id,
+          source,
+          path,
+          method,
+          status,
+          metadata,
+          ip_address AS ipAddress,
+          created_at AS createdAt
+        FROM request_logs
+        ORDER BY id DESC
+        LIMIT ?
+      `;
+
+  const logs = beforeId
+    ? (db.prepare(query).all(beforeId, limit) as RequestLogRecord[])
+    : (db.prepare(query).all(limit) as RequestLogRecord[]);
+
+  const totalCount = beforeId
+    ? undefined
+    : (db.prepare("SELECT COUNT(*) AS total FROM request_logs").get() as { total: number }).total;
+
+  const hasMore = logs.length === limit;
+
+  return { logs, totalCount, hasMore };
 }

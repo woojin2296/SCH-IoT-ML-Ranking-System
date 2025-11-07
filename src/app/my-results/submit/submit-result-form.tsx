@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { projects } from "@/lib/projects";
-import AppHero from "@/components/app/AppHero";
-import { AppNoticesList } from "@/components/app/AppNoticesList";
+import AppHero from "@/app/components/AppHero";
+import { AppNoticesList } from "@/app/components/AppNoticesList";
 import { Alert } from "@/components/ui/alert";
 
 type SubmitState = "idle" | "submitting" | "success" | "error";

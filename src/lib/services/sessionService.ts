@@ -6,18 +6,32 @@ import {
   deleteSessionsByUserId,
   findActiveSessionUser,
   insertSession,
-  type SessionUserRecord,
 } from "@/lib/repositories/sessionRepository";
+import type { UserRecord } from "@/lib/type/UserRecord";
+import { InvalidArgumentError } from "../Error";
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
-export type SessionUser = SessionUserRecord;
+export type SessionUser = UserRecord;
+
+function normalizeSemester(semesterRaw: number): number {
+  return semesterRaw >= 100000 ? Math.trunc(semesterRaw / 100) : semesterRaw;
+}
 
 export function createSession(userId: number) {
+  if (!Number.isInteger(userId) || userId <= 0) {
+    throw new InvalidArgumentError("userId", "must be a positive integer");
+  }
+
   const sessionToken = randomUUID();
   const expiresAt = new Date(Date.now() + SESSION_TTL_SECONDS * 1000).toISOString();
 
-  insertSession(userId, sessionToken, expiresAt);
+  try {
+    insertSession(userId, sessionToken, expiresAt);
+  } catch (error) {
+    console.error("Failed to insert session", { userId, error });
+    throw error;
+  }
 
   return {
     sessionToken,
@@ -26,17 +40,52 @@ export function createSession(userId: number) {
 }
 
 export function cleanupExpiredSessions() {
-  deleteExpiredSessions();
+  try {
+    deleteExpiredSessions();
+  } catch (error) {
+    console.error("Failed to cleanup expired sessions", { error });
+  }
 }
 
 export function revokeSessionsForUser(userId: number) {
-  deleteSessionsByUserId(userId);
+  if (!Number.isInteger(userId) || userId <= 0) return;
+  try {
+    deleteSessionsByUserId(userId);
+  } catch (error) {
+    console.error("Failed to revoke sessions for user", { userId, error });
+  }
 }
 
 export function deleteSession(sessionToken: string) {
-  deleteSessionByToken(sessionToken);
+  if (!sessionToken) return;
+  try {
+    deleteSessionByToken(sessionToken);
+  } catch (error) {
+    console.error("Failed to delete session by token", { error });
+  }
 }
 
 export function getUserBySessionToken(sessionToken: string): SessionUser | null {
-  return findActiveSessionUser(sessionToken);
+  if (!sessionToken) return null;
+  try {
+    const row = findActiveSessionUser(sessionToken) as UserRecord | null;
+    if (!row) return null;
+    const normalized: SessionUser = {
+      id: row.id,
+      studentNumber: row.studentNumber,
+      email: row.email,
+      name: row.name,
+      publicId: row.publicId,
+      role: row.role,
+      semester: normalizeSemester(row.semester),
+      lastLoginAt: row.lastLoginAt,
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
+    return normalized;
+  } catch (error) {
+    console.error("Failed to get user by session token", { error });
+    return null;
+  }
 }

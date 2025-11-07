@@ -1,12 +1,12 @@
 import {
-  deleteNoticeRowById,
-  findNoticeRowById,
-  insertNoticeRow,
-  listActiveNoticeRows,
-  listAllNoticeRows,
-  updateNoticeRowById,
-  type NoticeRow,
+  deleteNoticeRecordById,
+  findAllActiveNotices,
+  findAllNotices,
+  findNoticeById as findNoticeByIdRepo,
+  insertNotice,
+  updateNoticeById,
 } from "@/lib/repositories/noticeRepository";
+import type { NoticeRecord } from "@/lib/type/NoticeRecord";
 
 export type Notice = {
   id: number;
@@ -16,7 +16,7 @@ export type Notice = {
   updatedAt: string;
 };
 
-const mapNoticeRow = (row: NoticeRow): Notice => ({
+const mapNoticeRecord = (row: NoticeRecord): Notice => ({
   id: row.id,
   message: row.message,
   isActive: Boolean(row.isActive),
@@ -24,17 +24,37 @@ const mapNoticeRow = (row: NoticeRow): Notice => ({
   updatedAt: row.updatedAt,
 });
 
-export function getActiveNotices(): Notice[] {
-  return listActiveNoticeRows().map(mapNoticeRow);
+// SSR method
+// Perfect method do not change!!!!!!!
+export function getActiveNoticeStrings(): string[] {
+  try {
+    const records = findAllActiveNotices() as NoticeRecord[];
+    if (!records || records.length === 0) {
+      return ["현재 공지사항이 없습니다."];
+    }
+    return records.map((r) => r.message);
+  } catch (error) {
+    return ["오류로 인해 공지사항을 불러올 수 없습니다."];
+  }
 }
 
 export function getAllNotices(): Notice[] {
-  return listAllNoticeRows().map(mapNoticeRow);
+  try {
+    return findAllNotices().map(mapNoticeRecord);
+  } catch (error) {
+    console.error("Failed to fetch notices", error);
+    return [];
+  }
 }
 
 function findNoticeById(id: number): Notice | null {
-  const row = findNoticeRowById(id);
-  return row ? mapNoticeRow(row) : null;
+  try {
+    const row = findNoticeByIdRepo(id);
+    return row ? mapNoticeRecord(row) : null;
+  } catch (error) {
+    console.error("Failed to fetch notice by id", { id, error });
+    return null;
+  }
 }
 
 export type CreateNoticeInput = {
@@ -47,12 +67,17 @@ export type CreateNoticeResult =
   | { status: "success"; notice: Notice };
 
 function createNotice(input: { message: string; isActive: boolean }): Notice {
-  const id = insertNoticeRow(input);
-  const created = findNoticeRowById(id);
-  if (!created) {
-    throw new Error("NOTICE_CREATE_LOOKUP_FAILED");
+  try {
+    const id = insertNotice(input);
+    const created = findNoticeByIdRepo(id);
+    if (!created) {
+      throw new Error("NOTICE_CREATE_LOOKUP_FAILED");
+    }
+    return mapNoticeRecord(created);
+  } catch (error) {
+    console.error("Failed to create notice", { input, error });
+    throw error;
   }
-  return mapNoticeRow(created);
 }
 
 export function createNoticeValidated(payload: CreateNoticeInput): CreateNoticeResult {
@@ -63,8 +88,13 @@ export function createNoticeValidated(payload: CreateNoticeInput): CreateNoticeR
     return { status: "invalid_message" };
   }
 
-  const notice = createNotice({ message: trimmedMessage, isActive });
-  return { status: "success", notice };
+  try {
+    const notice = createNotice({ message: trimmedMessage, isActive });
+    return { status: "success", notice };
+  } catch (error) {
+    console.error("createNoticeValidated failed", error);
+    throw error;
+  }
 }
 
 function updateNotice(
@@ -81,12 +111,16 @@ function updateNotice(
     normalizedUpdates.isActive = updates.isActive;
   }
 
-  if (Object.keys(normalizedUpdates).length > 0) {
-    updateNoticeRowById(id, normalizedUpdates);
+  try {
+    if (Object.keys(normalizedUpdates).length > 0) {
+      updateNoticeById(id, normalizedUpdates);
+    }
+    const updated = findNoticeByIdRepo(id);
+    return updated ? mapNoticeRecord(updated) : null;
+  } catch (error) {
+    console.error("Failed to update notice", { id, updates, error });
+    return null;
   }
-
-  const updated = findNoticeRowById(id);
-  return updated ? mapNoticeRow(updated) : null;
 }
 
 export type UpdateNoticeInput = {
@@ -135,16 +169,25 @@ export function updateNoticeValidated(payload: UpdateNoticeInput): UpdateNoticeR
     updates.isActive = !!payload.isActive;
   }
 
-  const notice = updateNotice(id, updates);
-  if (!notice) {
-    return { status: "not_found", id };
+  try {
+    const notice = updateNotice(id, updates);
+    if (!notice) {
+      return { status: "not_found", id };
+    }
+    return { status: "success", notice };
+  } catch (error) {
+    console.error("updateNoticeValidated failed", { id, updates, error });
+    throw error;
   }
-
-  return { status: "success", notice };
 }
 
 function deleteNotice(id: number): boolean {
-  return deleteNoticeRowById(id) > 0;
+  try {
+    return deleteNoticeRecordById(id) > 0;
+  } catch (error) {
+    console.error("Failed to delete notice", { id, error });
+    throw error;
+  }
 }
 
 export type DeleteNoticeResult =
@@ -157,10 +200,14 @@ export function deleteNoticeValidated(id?: number): DeleteNoticeResult {
     return { status: "invalid_id" };
   }
 
-  const deleted = deleteNotice(id);
-  if (!deleted) {
-    return { status: "not_found" };
+  try {
+    const deleted = deleteNotice(id);
+    if (!deleted) {
+      return { status: "not_found" };
+    }
+    return { status: "success" };
+  } catch (error) {
+    console.error("deleteNoticeValidated failed", { id, error });
+    throw error;
   }
-
-  return { status: "success" };
 }
