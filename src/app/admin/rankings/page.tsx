@@ -13,7 +13,7 @@ type SearchParams = {
   year?: string;
 };
 
-export default async function Page({ searchParams }: { searchParams?: SearchParams }) {
+export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   cleanupExpiredSessions();
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session_token")?.value;
@@ -22,9 +22,11 @@ export default async function Page({ searchParams }: { searchParams?: SearchPara
   if (!sessionUser) redirect("/login");
   if (sessionUser.role !== "admin") redirect("/");
 
-  const projectNumber = resolveProjectNumber(searchParams?.project);
+  const resolvedParams = await searchParams;
+
+  const projectNumber = resolveProjectNumber(resolvedParams?.project);
   const distinctYears = getDistinctUserYears();
-  let selectedYear = resolveYear(searchParams?.year, distinctYears[0]);
+  let selectedYear = resolveYear(resolvedParams?.year, distinctYears[0]);
   if (typeof selectedYear !== "number") {
     selectedYear = new Date().getFullYear();
   }
