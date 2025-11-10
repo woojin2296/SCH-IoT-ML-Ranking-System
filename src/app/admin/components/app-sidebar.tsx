@@ -5,7 +5,6 @@ import Image from "next/image";
 import {
   ClipboardListIcon,
   FileCodeIcon,
-  FileTextIcon,
   HomeIcon,
   MegaphoneIcon,
   SettingsIcon,
@@ -41,11 +40,6 @@ const data = {
       url: "/admin/notices",
       icon: MegaphoneIcon,
     },
-    {
-      name: "설정",
-      url: "/admin/settings",
-      icon: SettingsIcon,
-    },
   ],
   score: [
     {
@@ -54,17 +48,12 @@ const data = {
       icon: StarIcon,
     },
     {
-      name: "랭킹 점수 제출 관리",
-      url: "/admin/score-submissions",
+      name: "제출 점수 관리",
+      url: "/admin/scores",
       icon: ClipboardListIcon,
     },
   ],
   log: [
-    {
-      name: "점수 로그",
-      url: "/admin/score-logs",
-      icon: FileTextIcon,
-    },
     {
       name: "요청 로그",
       url: "/admin/request-logs",

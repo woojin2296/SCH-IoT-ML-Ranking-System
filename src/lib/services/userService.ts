@@ -7,19 +7,16 @@ import {
   findUserByStudentNumber as findUserByStudentNumberRepo,
   isEmailTaken,
   isPublicIdTaken,
-  updateUserById,
 } from "@/lib/repositories/userRepository";
 import type { UserRecord } from "@/lib/type/User";
 import { establishUserSession } from "@/lib/services/authService";
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestIp } from "@/lib/request";
 import { logUserRequest, resolveRequestSource } from "@/lib/services/requestLogService";
-import { requireAdmin } from "@/lib/auth-guard";
-import { findAllUsers } from "@/lib/repositories/userRepository";
 
 const ALLOWED_ROLES = new Set(["user", "admin"]);
 
-export type RegisterUserPayload = {
+type RegisterUserPayload = {
   name?: string;
   studentNumber?: string;
   email: string;
@@ -27,7 +24,7 @@ export type RegisterUserPayload = {
   role?: string;
 };
 
-export type RegisterUserResult =
+type RegisterUserResult =
   | { status: "missing_fields" }
   | { status: "invalid_name" }
   | { status: "invalid_student_number" }
@@ -42,7 +39,7 @@ export type RegisterUserResult =
       role: string;
     };
 
-export async function registerUser(payload: RegisterUserPayload): Promise<RegisterUserResult> {
+async function registerUser(payload: RegisterUserPayload): Promise<RegisterUserResult> {
   const name = payload.name?.trim();
   const studentNumber = payload.studentNumber?.trim();
   const emailRaw = payload.email.trim();
@@ -120,111 +117,11 @@ export async function registerUser(payload: RegisterUserPayload): Promise<Regist
   }
 }
 
-export type AdminUpdateUserPayload = {
-  id?: number;
-  name?: string;
-  studentNumber?: string;
-  email?: string;
-  role?: string;
-  semester?: number;
-};
-
-export type AdminUpdateUserResult =
-  | { status: "invalid_id" }
-  | { status: "missing_name" }
-  | { status: "invalid_student_number" }
-  | { status: "invalid_email" }
-  | { status: "invalid_role" }
-  | { status: "invalid_semester"; semester: number }
-  | { status: "duplicate_student_number" }
-  | { status: "duplicate_email" }
-  | { status: "not_found" }
-  | { status: "success"; user: UserRecord };
-
-export function updateUserViaAdmin(payload: AdminUpdateUserPayload): AdminUpdateUserResult {
-  const { id, name, studentNumber, email: emailInput, role, semester } = payload;
-
-  if (typeof id !== "number" || !Number.isInteger(id) || id <= 0) {
-    return { status: "invalid_id" };
-  }
-
-  const trimmedName = name?.trim();
-  if (!trimmedName) {
-    return { status: "missing_name" };
-  }
-
-  const trimmedStudentNumber = studentNumber?.trim();
-  if (!trimmedStudentNumber || !/^\d{8}$/.test(trimmedStudentNumber)) {
-    return { status: "invalid_student_number" };
-  }
-
-  const normalizedRole = role?.trim().toLowerCase() ?? "user";
-  if (!ALLOWED_ROLES.has(normalizedRole)) {
-    return { status: "invalid_role" };
-  }
-
-  let normalizedEmail: string | undefined = undefined;
-  if (Object.prototype.hasOwnProperty.call(payload, "email")) {
-    const emailStr = String(emailInput ?? "").trim();
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
-    if (!emailOk) {
-      return { status: "invalid_email" };
-    }
-    normalizedEmail = emailStr;
-  }
-
-  const currentYear = new Date().getFullYear();
-  const normalizedSemester = semester ?? currentYear;
-  if (
-    !Number.isInteger(normalizedSemester) ||
-    normalizedSemester < 2000 ||
-    normalizedSemester > currentYear + 10
-  ) {
-    return { status: "invalid_semester", semester: normalizedSemester };
-  }
-
-  try {
-    const updated = updateUserById({
-      id,
-      name: trimmedName,
-      studentNumber: trimmedStudentNumber,
-      role: normalizedRole,
-      semester: normalizedSemester,
-      email: normalizedEmail,
-    });
-
-    if (!updated) {
-      return { status: "not_found" };
-    }
-
-    const user = findUserById(id);
-    if (!user) {
-      return { status: "not_found" };
-    }
-
-    return { status: "success", user };
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("UNIQUE")) {
-      if (error.message.includes("users.student_number")) {
-        return { status: "duplicate_student_number" };
-      }
-      if (error.message.includes("users.email")) {
-        return { status: "duplicate_email" };
-      }
-    }
-    throw error;
-  }
-}
-
 export function findUserByStudentNumber(studentNumber: string): UserRecord | null {
   return findUserByStudentNumberRepo(studentNumber);
 }
 
 // Service-level user listing for consumers (admin pages etc.)
-export function listUsersOrderedByCreation(): UserRecord[] {
-  return findAllUsers();
-}
-
 // API Orchestrators (API routes should call these and only handle network-level failures)
 
 export async function handleRegisterUserApi(request: NextRequest): Promise<NextResponse> {
@@ -429,125 +326,6 @@ export async function handleRegisterUserApi(request: NextRequest): Promise<NextR
   });
 
   return response;
-}
-
-export async function handleAdminUsersGetApi(request: NextRequest): Promise<NextResponse> {
-  const adminUser = await requireAdmin();
-  const clientIp = getRequestIp(request);
-  const resolvedIp = clientIp ?? "unknown";
-
-  if (!adminUser) {
-    logUserRequest({
-      source: resolveRequestSource(null, clientIp),
-      path: request.nextUrl.pathname,
-      method: request.method,
-      status: 401,
-      metadata: { reason: "unauthorized" },
-      ipAddress: resolvedIp,
-    });
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const users = listUsersOrderedByCreation();
-  logUserRequest({
-    source: resolveRequestSource(adminUser.id, clientIp),
-    path: request.nextUrl.pathname,
-    method: request.method,
-    status: 200,
-    metadata: { count: users.length },
-    ipAddress: resolvedIp,
-  });
-
-  return NextResponse.json({ users });
-}
-
-export async function handleAdminUsersPatchApi(request: NextRequest): Promise<NextResponse> {
-  const adminUser = await requireAdmin();
-  const clientIp = getRequestIp(request);
-  const resolvedIp = clientIp ?? "unknown";
-
-  if (!adminUser) {
-    logUserRequest({
-      source: resolveRequestSource(null, clientIp),
-      path: request.nextUrl.pathname,
-      method: request.method,
-      status: 401,
-      metadata: { reason: "unauthorized" },
-      ipAddress: resolvedIp,
-    });
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  type Payload = {
-    id?: number;
-    name?: string;
-    studentNumber?: string;
-    email?: string;
-    role?: string;
-    semester?: number;
-  };
-
-  let payload: Payload;
-  try {
-    payload = (await request.json()) as Payload;
-  } catch {
-    logUserRequest({
-      source: resolveRequestSource(adminUser.id, clientIp),
-      path: request.nextUrl.pathname,
-      method: request.method,
-      status: 400,
-      metadata: { reason: "invalid_json" },
-      ipAddress: resolvedIp,
-    });
-    return NextResponse.json({ error: "잘못된 요청 형식입니다." }, { status: 400 });
-  }
-
-  const result = updateUserViaAdmin(payload);
-
-  const logAndReturn = (status: number, body: unknown, meta: Record<string, unknown>) => {
-    logUserRequest({
-      source: resolveRequestSource(adminUser.id, clientIp),
-      path: request.nextUrl.pathname,
-      method: request.method,
-      status,
-      metadata: meta,
-      ipAddress: resolvedIp,
-    });
-    return NextResponse.json(body as any, { status });
-  };
-
-  switch (result.status) {
-    case "invalid_id":
-      return logAndReturn(400, { error: "유효한 사용자 ID가 필요합니다." }, { reason: "invalid_id", id: payload.id });
-    case "missing_name":
-      return logAndReturn(400, { error: "이름을 입력해주세요." }, { reason: "missing_name", id: payload.id });
-    case "invalid_student_number":
-      return logAndReturn(
-        400,
-        { error: "학번은 8자리 숫자여야 합니다." },
-        { reason: "invalid_student_number", id: payload.id },
-      );
-    case "invalid_email":
-      return logAndReturn(400, { error: "이메일 형식이 올바르지 않습니다." }, { reason: "invalid_email", id: payload.id });
-    case "invalid_role":
-      return logAndReturn(400, { error: "역할 정보가 올바르지 않습니다." }, { reason: "invalid_role", id: payload.id });
-    case "invalid_semester":
-      return logAndReturn(
-        400,
-        { error: "년도는 4자리 숫자로 입력해주세요." },
-        { reason: "invalid_semester", id: payload.id, semester: result.semester },
-      );
-    case "duplicate_student_number":
-      return logAndReturn(409, { error: "중복된 학번입니다." }, { reason: "duplicate_student_number", id: payload.id });
-    case "duplicate_email":
-      return logAndReturn(409, { error: "중복된 이메일입니다." }, { reason: "duplicate_email", id: payload.id });
-    case "not_found":
-      return logAndReturn(404, { error: "사용자를 찾을 수 없습니다." }, { reason: "not_found", id: payload.id });
-    case "success":
-      return logAndReturn(200, { user: result.user }, { id: result.user.id });
-    default:
-      return logAndReturn(500, { error: "사용자 수정 중 오류가 발생했습니다." }, { reason: "update_failed", id: payload.id });
-  }
 }
 
 export async function handlePublicGetUserByStudentNumberApi(

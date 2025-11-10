@@ -1,10 +1,10 @@
 import Link from "next/link";
 
-import type { ProjectSwitcherProject } from "./ProjectSwitcher";
-import { ProjectSwitcher } from "./ProjectSwitcher";
-import { RankingSummary } from "./RankingSummary";
-import { RankingTable, type RankingTableRow } from "./RankingTable";
-import { YearSwitcher } from "./YearSwitcher";
+import type { ProjectSwitcherProject } from "./components/ProjectSwitcher";
+import { ProjectSwitcher } from "./components/ProjectSwitcher";
+import { RankingSummary } from "./components/RankingSummary";
+import { RankingTable, type RankingTableRow } from "./components/RankingTable";
+import { YearSwitcher } from "./components/YearSwitcher";
 
 type RankingsBoardProps = {
   rankings: RankingTableRow[];
