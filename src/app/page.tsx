@@ -17,7 +17,11 @@ function getProjectFromParams(value?: string | string[]): number {
   return Number.isInteger(parsed) && parsed > 0 && parsed <= projects.length ? parsed : 1;
 }
 
-export default async function Home({ searchParams }: { searchParams: { project: string | string[] } }) {
+type HomeSearchParams = {
+  project?: string | string[];
+};
+
+export default async function Home({ searchParams }: { searchParams: Promise<HomeSearchParams> }) {
   cleanupExpiredSessions();
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session_token")?.value;
@@ -27,7 +31,7 @@ export default async function Home({ searchParams }: { searchParams: { project: 
 
   const userId = sessionUser.id;
   const params = await searchParams;
-  const activeProject = getProjectFromParams(params.project);
+  const activeProject = getProjectFromParams(params?.project);
 
   return (
     <div className="min-h-svh flex flex-col items-center gap-4 p-6 md:p-10">

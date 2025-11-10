@@ -15,7 +15,7 @@ type SearchParams = {
   page?: string;
 };
 
-export default async function Page({ searchParams }: { searchParams?: SearchParams }) {
+export default async function Page({ searchParams }: { searchParams: Promise<SearchParams> }) {
   cleanupExpiredSessions();
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session_token")?.value;
@@ -24,8 +24,10 @@ export default async function Page({ searchParams }: { searchParams?: SearchPara
   if (!sessionUser) redirect("/login");
   if (sessionUser.role !== "admin") redirect("/");
 
-  const studentNumberFilter = normalizeStudentNumber(searchParams?.studentNumber);
-  const requestedPage = parsePage(searchParams?.page);
+  const resolvedParams = await searchParams;
+
+  const studentNumberFilter = normalizeStudentNumber(resolvedParams?.studentNumber);
+  const requestedPage = parsePage(resolvedParams?.page);
 
   const totalCount = countScoreSubmissionsForAdmin(studentNumberFilter);
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
