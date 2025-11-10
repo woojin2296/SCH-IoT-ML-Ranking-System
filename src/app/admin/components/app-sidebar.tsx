@@ -7,7 +7,6 @@ import {
   FileCodeIcon,
   HomeIcon,
   MegaphoneIcon,
-  SettingsIcon,
   StarIcon,
   UsersIcon,
 } from "lucide-react";

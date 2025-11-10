@@ -18,7 +18,6 @@ export default function SubmitResultForm() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<SubmitState>("idle");
-  const [noticeMessages, setNoticeMessages] = useState<string[]>([]);
 
   useEffect(() => {
     if (status === "success") {
@@ -30,23 +29,6 @@ export default function SubmitResultForm() {
     }
     return undefined;
   }, [status, router]);
-
-  useEffect(() => {
-    const fetchNotice = async () => {
-      try {
-        const response = await fetch("/api/notice");
-        if (!response.ok) return;
-        const data = (await response.json()) as { notices?: { message: string }[] };
-        if (data.notices?.length) {
-          setNoticeMessages(data.notices.map((item) => item.message));
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    };
-
-    fetchNotice();
-  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
