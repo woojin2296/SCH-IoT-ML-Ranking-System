@@ -72,7 +72,7 @@ export default async function MyResultsPage({
 
   let data: MyResultsResponse | null = null;
   try {
-    const response = await fetch(`${baseUrl}/api/my-results${query}`, {
+    const response = await fetch(`${baseUrl}/api/auth/my-results${query}`, {
       headers: {
         Cookie: cookieHeader,
       },

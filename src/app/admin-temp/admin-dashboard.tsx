@@ -816,7 +816,7 @@ export default function AdminDashboard({
                 <td className="px-4 py-3 text-center">
                   {score.hasFile ? (
                     <a
-                      href={`/api/my-results/${score.id}/file`}
+                      href={`/api/auth/my-results/${score.id}/file`}
                       className="inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-xs font-medium text-[#265392] transition hover:border-[#265392]"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -929,7 +929,7 @@ export default function AdminDashboard({
                     <td className="px-4 py-3 text-center">
                       {record.hasFile ? (
                         <a
-                          href={`/api/my-results/${record.id}/file`}
+                          href={`/api/auth/my-results/${record.id}/file`}
                           className="inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-xs font-medium text-[#265392] transition hover:border-[#265392]"
                           target="_blank"
                           rel="noopener noreferrer"

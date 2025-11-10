@@ -42,7 +42,7 @@ export default function MyResultsTable({ scores }: Props) {
     setPendingId(id);
 
     try {
-      const response = await fetch("/api/my-results", {
+      const response = await fetch("/api/auth/my-results", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -112,7 +112,7 @@ export default function MyResultsTable({ scores }: Props) {
                 <td className="px-4 py-3 text-center">
                   {row.hasFile ? (
                     <a
-                      href={`/api/my-results/${row.id}/file`}
+                      href={`/api/auth/my-results/${row.id}/file`}
                       className="inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-xs font-medium text-[#265392] transition hover:border-[#265392]"
                       target="_blank"
                       rel="noopener noreferrer"

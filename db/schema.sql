@@ -3,7 +3,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   student_number TEXT NOT NULL UNIQUE,
-  email TEXT UNIQUE,
+  email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   name TEXT,
   public_id TEXT NOT NULL UNIQUE,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 
-CREATE TABLE IF NOT EXISTS evaluation_scores (
+CREATE TABLE IF NOT EXISTS scores (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL,
   project_number INTEGER NOT NULL CHECK(project_number BETWEEN 1 AND 4),
@@ -50,14 +50,14 @@ CREATE TABLE IF NOT EXISTS evaluation_scores (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_evaluation_scores_user_id ON evaluation_scores(user_id);
-CREATE INDEX IF NOT EXISTS idx_evaluation_scores_project_score ON evaluation_scores(project_number, score DESC);
-CREATE INDEX IF NOT EXISTS idx_evaluation_scores_evaluated_at ON evaluation_scores(evaluated_at);
+CREATE INDEX IF NOT EXISTS idx_scores_user_id ON scores(user_id);
+CREATE INDEX IF NOT EXISTS idx_scores_project_score ON scores(project_number, score DESC);
+CREATE INDEX IF NOT EXISTS idx_scores_evaluated_at ON scores(evaluated_at);
 
-CREATE TRIGGER IF NOT EXISTS evaluation_scores_updated_at_trigger
-AFTER UPDATE ON evaluation_scores
+CREATE TRIGGER IF NOT EXISTS scores_updated_at_trigger
+AFTER UPDATE ON scores
 BEGIN
-  UPDATE evaluation_scores
+  UPDATE scores
   SET updated_at = CURRENT_TIMESTAMP
   WHERE id = NEW.id;
 END;
