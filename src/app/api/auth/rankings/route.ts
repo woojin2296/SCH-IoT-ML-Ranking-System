@@ -5,11 +5,7 @@ import {
   cleanupExpiredSessions,
   getUserBySessionToken,
 } from "@/lib/services/sessionService";
-import {
-  getDistinctUserYears,
-  getRankingRecords,
-  getRankingSummaryForUser,
-} from "@/lib/services/evaluationScoreService";
+import { getDistinctUserYears, getRankingRecords, getRankingSummaryForUser } from "@/lib/services/scoreService";
 
 type RankingRow = {
   id: number;

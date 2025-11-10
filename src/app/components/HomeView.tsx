@@ -1,7 +1,7 @@
 import AppHero from "@/app/components/AppHero";
 import { AppNoticesList } from "@/app/components/AppNoticesList";
 import { projects } from "@/lib/projects";
-import type { RankingRecord } from "@/lib/services/evaluationScoreService";
+import type { RankingRecord } from "@/lib/services/scoreService";
 import { RankingsBoard } from "@/app/components/RankingsBoard";
 import type { RankingTableRow } from "@/app/components/RankingTable";
 

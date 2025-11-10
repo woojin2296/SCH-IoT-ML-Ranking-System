@@ -67,7 +67,11 @@ export default function RegisterStepForm({ studentNumber, onSuccess }: Props) {
         setError(emailError);
         return;
       }
-      if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      if (!trimmedEmail) {
+        setError("이메일을 입력해주세요.");
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
         setError("이메일 형식이 올바르지 않습니다.");
         return;
       }
@@ -90,7 +94,7 @@ export default function RegisterStepForm({ studentNumber, onSuccess }: Props) {
           body: JSON.stringify({
             name: trimmedName,
             studentNumber,
-            email: trimmedEmail || undefined,
+            email: trimmedEmail,
             password: newPassword,
           }),
         });
@@ -157,6 +161,7 @@ export default function RegisterStepForm({ studentNumber, onSuccess }: Props) {
           }}
           aria-invalid={Boolean(emailError)}
           autoComplete="email"
+          required
         />
         {emailError ? <p className="text-xs text-destructive">{emailError}</p> : null}
       </div>

@@ -6,11 +6,11 @@ import AppHero from "@/app/components/AppHero";
 import { AppNoticesList } from "@/app/components/AppNoticesList";
 import AdminDashboard from "./admin-dashboard";
 import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/services/sessionService";
-import { listUsersOrderedByCreation } from "@/lib/repositories/userRepository";
+import { listUsersOrderedByCreation } from "@/lib/services/userService";
 import { listRequestLogsWithUsers } from "@/lib/repositories/requestLogRepository";
 import { getAllNotices } from "@/lib/services/noticeService";
 import { getAllSettings } from "@/lib/services/appSettingService";
-import { getAdminEvaluationScores, getAdminRankingRecords } from "@/lib/services/evaluationScoreService";
+import { getAdminScores, getAdminRankingRecords } from "@/lib/services/scoreService";
 import { getEvaluationLogs } from "@/lib/services/evaluationLogService";
 
 export const metadata = {
@@ -41,7 +41,7 @@ export default async function AdminPage() {
   }
 
   const users = listUsersOrderedByCreation();
-  const scores = getAdminEvaluationScores();
+  const scores = getAdminScores();
 
   const notices = getAllNotices();
   const logs = getEvaluationLogs().map((log) => {
@@ -67,7 +67,8 @@ export default async function AdminPage() {
     };
   });
 
-  const rawRequestLogs = listRequestLogsWithUsers();
+  //const rawRequestLogs = listRequestLogsWithUsers();
+  const rawRequestLogs = []; // Temporarily disable request logs display
 
   const requestLogs = rawRequestLogs.map((log) => {
     let parsedMetadata: Record<string, unknown> | string | null = null;

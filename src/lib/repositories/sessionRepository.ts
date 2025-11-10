@@ -1,7 +1,5 @@
 import { getDb } from "@/lib/db";
-import { UserRecord } from "../type/UserRecord";
-
-// To Codex : Do not change this file except when i tell you to.
+import { UserRecord } from "../type/User";
 
 //Create
 export function insertSession(userId: number, sessionToken: string, expiresAt: string) {

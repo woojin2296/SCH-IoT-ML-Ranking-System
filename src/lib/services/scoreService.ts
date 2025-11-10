@@ -1,25 +1,25 @@
 import {
-  deleteEvaluationScoreById,
-  deleteEvaluationScoreByUser,
-  findEvaluationScoreSummaryById,
-  findEvaluationScoreSummaryByIdForUser,
+  deleteScoreById,
+  deleteScoreByUser,
+  findScoreSummaryById,
+  findScoreSummaryByIdForUser,
   findRankingRowForUser,
-  findEvaluationScoreFileMetaById,
-  insertEvaluationScore,
+  findScoreFileMetaById,
+  insertScore,
   listAdminRankingRows,
   listDistinctUserYears,
   listRankingRows,
   listScoresByUser,
   listScoresWithUserMeta,
-  type EvaluationScoreRow,
-  type EvaluationScoreSummaryRow,
-  type EvaluationScoreFileMetaRow,
-  type EvaluationScoreWithUserRow,
+  type ScoreRow,
+  type ScoreSummaryRow,
+  type ScoreFileMetaRow,
+  type ScoreWithUserRow,
   type RankingRow,
   type UserYearRow,
-} from "@/lib/repositories/evaluationScoreRepository";
+} from "@/lib/repositories/scoreRepository";
 
-export type AdminEvaluationScore = {
+export type AdminScore = {
   id: number;
   userId: number;
   userPublicId: string;
@@ -34,7 +34,7 @@ export type AdminEvaluationScore = {
   userYear: number;
 };
 
-export type UserEvaluationScore = {
+export type UserScore = {
   id: number;
   userId: number;
   projectNumber: number;
@@ -46,7 +46,7 @@ export type UserEvaluationScore = {
   hasFile: boolean;
 };
 
-export type EvaluationScoreSummary = {
+export type ScoreSummary = {
   id: number;
   userId: number;
   projectNumber: number;
@@ -54,7 +54,7 @@ export type EvaluationScoreSummary = {
   filePath: string | null;
 };
 
-export type EvaluationScoreFileMeta = {
+export type ScoreFileMeta = {
   id: number;
   userId: number;
   filePath: string | null;
@@ -77,8 +77,8 @@ export type AdminRankingRecord = {
   hasFile: boolean;
 };
 
-export function getAdminEvaluationScores(): AdminEvaluationScore[] {
-  return listScoresWithUserMeta().map((row: EvaluationScoreWithUserRow) => ({
+export function getAdminScores(): AdminScore[] {
+  return listScoresWithUserMeta().map((row: ScoreWithUserRow) => ({
     id: row.id,
     userId: row.userId,
     userPublicId: row.userPublicId,
@@ -94,11 +94,11 @@ export function getAdminEvaluationScores(): AdminEvaluationScore[] {
   }));
 }
 
-export function getEvaluationScoresForUser(
+export function getScoresForUser(
   userId: number,
   projectNumber?: number | null,
-): UserEvaluationScore[] {
-  return listScoresByUser(userId, projectNumber).map((row: EvaluationScoreRow) => ({
+): UserScore[] {
+  return listScoresByUser(userId, projectNumber).map((row: ScoreRow) => ({
     id: row.id,
     userId: row.userId,
     projectNumber: row.projectNumber,
@@ -111,7 +111,7 @@ export function getEvaluationScoresForUser(
   }));
 }
 
-export function createEvaluationScore(input: {
+export function createScore(input: {
   userId: number;
   projectNumber: number;
   score: number;
@@ -121,30 +121,30 @@ export function createEvaluationScore(input: {
   fileSize: number | null;
   evaluatedAt: string;
 }): number {
-  return insertEvaluationScore(input);
+  return insertScore(input);
 }
 
-export function getEvaluationScoreSummary(id: number): EvaluationScoreSummary | null {
-  return castSummary(findEvaluationScoreSummaryById(id));
+export function getScoreSummary(id: number): ScoreSummary | null {
+  return castSummary(findScoreSummaryById(id));
 }
 
-export function getEvaluationScoreSummaryForUser(
+export function getScoreSummaryForUser(
   id: number,
   userId: number,
-): EvaluationScoreSummary | null {
-  return castSummary(findEvaluationScoreSummaryByIdForUser(id, userId));
+): ScoreSummary | null {
+  return castSummary(findScoreSummaryByIdForUser(id, userId));
 }
 
-export function removeEvaluationScore(id: number): boolean {
-  return deleteEvaluationScoreById(id) > 0;
+export function removeScore(id: number): boolean {
+  return deleteScoreById(id) > 0;
 }
 
-export function removeEvaluationScoreForUser(id: number, userId: number): boolean {
-  return deleteEvaluationScoreByUser(id, userId) > 0;
+export function removeScoreForUser(id: number, userId: number): boolean {
+  return deleteScoreByUser(id, userId) > 0;
 }
 
-export function getEvaluationScoreFileMeta(id: number): EvaluationScoreFileMeta | null {
-  const row = findEvaluationScoreFileMetaById(id);
+export function getScoreFileMeta(id: number): ScoreFileMeta | null {
+  const row = findScoreFileMetaById(id);
   if (!row) {
     return null;
   }
@@ -195,7 +195,7 @@ export function getRankingSummaryForUser(
   return findRankingRowForUser(projectNumber, selectedYear, userId);
 }
 
-function castSummary(row: EvaluationScoreSummaryRow | null): EvaluationScoreSummary | null {
+function castSummary(row: ScoreSummaryRow | null): ScoreSummary | null {
   if (!row) {
     return null;
   }

@@ -72,7 +72,7 @@ export default function SubmitResultForm() {
       formData.append("score", String(numericScore));
       formData.append("attachment", file);
 
-      const response = await fetch("/api/my-results", {
+      const response = await fetch("/api/auth/my-results", {
         method: "POST",
         body: formData,
       });

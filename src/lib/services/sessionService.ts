@@ -7,7 +7,7 @@ import {
   findActiveSessionUser,
   insertSession,
 } from "@/lib/repositories/sessionRepository";
-import type { UserRecord } from "@/lib/type/UserRecord";
+import type { UserRecord } from "@/lib/type/User";
 import { InvalidArgumentError } from "../Error";
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days

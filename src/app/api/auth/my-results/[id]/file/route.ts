@@ -5,7 +5,7 @@ import path from "path";
 import { requireSessionUser } from "@/lib/auth-guard";
 import { resolveStoredFilePath } from "@/lib/uploads";
 import { createRequestLogger } from "@/lib/request-logger";
-import { getEvaluationScoreFileMeta } from "@/lib/services/evaluationScoreService";
+import { getScoreFileMeta } from "@/lib/services/scoreService";
 
 // GET /api/my-results/[id]/file
 // - Requires authenticated session (owner or admin).
@@ -37,7 +37,7 @@ export async function GET(
     return NextResponse.json({ error: "유효하지 않은 기록 ID입니다." }, { status: 400 });
   }
 
-  const record = getEvaluationScoreFileMeta(recordId);
+  const record = getScoreFileMeta(recordId);
 
   if (!record || !record.filePath) {
     logRequest(404, { reason: "not_found", scoreId: recordId });

@@ -2,13 +2,13 @@ import { verifyPassword } from "@/lib/auth";
 import {
   findUserWithPasswordByStudentNumber,
   updateUserLastLogin,
-  type UserWithPasswordRecord,
 } from "@/lib/repositories/userRepository";
 import {
   cleanupExpiredSessions,
   createSession,
   revokeSessionsForUser,
 } from "@/lib/services/sessionService";
+import { UserWithPasswordRecord } from "../type/User";
 
 export type AuthenticatedUser = UserWithPasswordRecord;
 

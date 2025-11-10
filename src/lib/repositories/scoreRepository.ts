@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 
-export type EvaluationScoreRow = {
+export type ScoreRow = {
   id: number;
   userId: number;
   projectNumber: number;
@@ -12,7 +12,7 @@ export type EvaluationScoreRow = {
   fileSize: number | null;
 };
 
-export type EvaluationScoreWithUserRow = {
+export type ScoreWithUserRow = {
   id: number;
   userId: number;
   userPublicId: string;
@@ -27,7 +27,7 @@ export type EvaluationScoreWithUserRow = {
   userYear: number;
 };
 
-export type EvaluationScoreSummaryRow = {
+export type ScoreSummaryRow = {
   id: number;
   userId: number;
   projectNumber: number;
@@ -35,7 +35,7 @@ export type EvaluationScoreSummaryRow = {
   filePath: string | null;
 };
 
-export type EvaluationScoreFileMetaRow = {
+export type ScoreFileMetaRow = {
   id: number;
   userId: number;
   filePath: string | null;
@@ -70,7 +70,7 @@ export type AdminRankingRow = {
   hasFile: number;
 };
 
-export function listScoresWithUserMeta(): EvaluationScoreWithUserRow[] {
+export function listScoresWithUserMeta(): ScoreWithUserRow[] {
   const db = getDb();
   return db
     .prepare(
@@ -91,15 +91,15 @@ export function listScoresWithUserMeta(): EvaluationScoreWithUserRow[] {
             WHEN u.semester >= 100000 THEN CAST(u.semester / 100 AS INTEGER)
             ELSE u.semester
           END AS userYear
-        FROM evaluation_scores es
+        FROM scores es
         INNER JOIN users u ON u.id = es.user_id
         ORDER BY es.evaluated_at DESC
       `,
     )
-    .all() as EvaluationScoreWithUserRow[];
+    .all() as ScoreWithUserRow[];
 }
 
-export function listScoresByUser(userId: number, projectNumber?: number | null): EvaluationScoreRow[] {
+export function listScoresByUser(userId: number, projectNumber?: number | null): ScoreRow[] {
   const db = getDb();
   const baseQuery = `
     SELECT
@@ -112,18 +112,18 @@ export function listScoresByUser(userId: number, projectNumber?: number | null):
       file_name AS fileName,
       file_type AS fileType,
       file_size AS fileSize
-    FROM evaluation_scores
+    FROM scores
     WHERE user_id = ?
       ${projectNumber !== null && projectNumber !== undefined ? "AND project_number = ?" : ""}
     ORDER BY project_number ASC, evaluated_at DESC
   `;
 
   return projectNumber !== null && projectNumber !== undefined
-    ? (db.prepare(baseQuery).all(userId, projectNumber) as EvaluationScoreRow[])
-    : (db.prepare(baseQuery).all(userId) as EvaluationScoreRow[]);
+    ? (db.prepare(baseQuery).all(userId, projectNumber) as ScoreRow[])
+    : (db.prepare(baseQuery).all(userId) as ScoreRow[]);
 }
 
-export function insertEvaluationScore(input: {
+export function insertScore(input: {
   userId: number;
   projectNumber: number;
   score: number;
@@ -137,7 +137,7 @@ export function insertEvaluationScore(input: {
   const result = db
     .prepare(
       `
-        INSERT INTO evaluation_scores (
+        INSERT INTO scores (
           user_id,
           project_number,
           score,
@@ -164,7 +164,7 @@ export function insertEvaluationScore(input: {
   return Number(result.lastInsertRowid);
 }
 
-export function findEvaluationScoreSummaryById(id: number): EvaluationScoreSummaryRow | null {
+export function findScoreSummaryById(id: number): ScoreSummaryRow | null {
   const db = getDb();
   const row = db
     .prepare(
@@ -175,20 +175,20 @@ export function findEvaluationScoreSummaryById(id: number): EvaluationScoreSumma
           project_number AS projectNumber,
           score,
           file_path AS filePath
-        FROM evaluation_scores
+        FROM scores
         WHERE id = ?
         LIMIT 1
       `,
     )
-    .get(id) as EvaluationScoreSummaryRow | undefined;
+    .get(id) as ScoreSummaryRow | undefined;
 
   return row ?? null;
 }
 
-export function findEvaluationScoreSummaryByIdForUser(
+export function findScoreSummaryByIdForUser(
   id: number,
   userId: number,
-): EvaluationScoreSummaryRow | null {
+): ScoreSummaryRow | null {
   const db = getDb();
   const row = db
     .prepare(
@@ -199,29 +199,29 @@ export function findEvaluationScoreSummaryByIdForUser(
           project_number AS projectNumber,
           score,
           file_path AS filePath
-        FROM evaluation_scores
+        FROM scores
         WHERE id = ? AND user_id = ?
         LIMIT 1
       `,
     )
-    .get(id, userId) as EvaluationScoreSummaryRow | undefined;
+    .get(id, userId) as ScoreSummaryRow | undefined;
 
   return row ?? null;
 }
 
-export function deleteEvaluationScoreById(id: number): number {
+export function deleteScoreById(id: number): number {
   const db = getDb();
-  const result = db.prepare("DELETE FROM evaluation_scores WHERE id = ?").run(id);
+  const result = db.prepare("DELETE FROM scores WHERE id = ?").run(id);
   return result.changes ?? 0;
 }
 
-export function deleteEvaluationScoreByUser(id: number, userId: number): number {
+export function deleteScoreByUser(id: number, userId: number): number {
   const db = getDb();
-  const result = db.prepare("DELETE FROM evaluation_scores WHERE id = ? AND user_id = ?").run(id, userId);
+  const result = db.prepare("DELETE FROM scores WHERE id = ? AND user_id = ?").run(id, userId);
   return result.changes ?? 0;
 }
 
-export function findEvaluationScoreFileMetaById(id: number): EvaluationScoreFileMetaRow | null {
+export function findScoreFileMetaById(id: number): ScoreFileMetaRow | null {
   const db = getDb();
   const row = db
     .prepare(
@@ -233,12 +233,12 @@ export function findEvaluationScoreFileMetaById(id: number): EvaluationScoreFile
           file_name AS fileName,
           file_type AS fileType,
           file_size AS fileSize
-        FROM evaluation_scores
+        FROM scores
         WHERE id = ?
         LIMIT 1
       `,
     )
-    .get(id) as EvaluationScoreFileMetaRow | undefined;
+    .get(id) as ScoreFileMetaRow | undefined;
 
   return row ?? null;
 }
@@ -280,15 +280,15 @@ export function listRankingRows(
               PARTITION BY es.user_id
               ORDER BY es.score DESC, es.evaluated_at ASC
             ) AS per_user_rank
-          FROM evaluation_scores es
-          INNER JOIN users u ON u.id = es.user_id
-          WHERE es.project_number = ?
-            AND (
-              CASE
-                WHEN u.semester >= 100000 THEN CAST(u.semester / 100 AS INTEGER)
-                ELSE u.semester
-              END
-            ) = ?
+        FROM scores es
+        INNER JOIN users u ON u.id = es.user_id
+        WHERE es.project_number = ?
+          AND (
+            CASE
+              WHEN u.semester >= 100000 THEN CAST(u.semester / 100 AS INTEGER)
+              ELSE u.semester
+            END
+          ) = ?
         )
         SELECT
           id,
@@ -326,7 +326,7 @@ export function findRankingRowForUser(
               PARTITION BY es.user_id
               ORDER BY es.score DESC, es.evaluated_at ASC
             ) AS per_user_rank
-          FROM evaluation_scores es
+          FROM scores es
           INNER JOIN users u ON u.id = es.user_id
           WHERE es.project_number = ?
             AND (
@@ -387,11 +387,11 @@ export function listAdminRankingRows(
               PARTITION BY u.student_number
               ORDER BY es.score DESC, es.evaluated_at ASC
             ) AS per_user_rank
-          FROM evaluation_scores es
+          FROM scores es
           INNER JOIN users u ON u.id = es.user_id
           WHERE es.project_number = ?
             AND es.evaluated_at BETWEEN ? AND ?
-        ),
+      ),
         best AS (
           SELECT
             id,

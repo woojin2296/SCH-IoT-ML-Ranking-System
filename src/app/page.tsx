@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/services/sessionService";
 import { getBaseUrl } from "@/lib/url";
 import { getActiveNotices } from "@/lib/services/noticeService";
-import type { RankingRecord } from "@/lib/services/evaluationScoreService";
+import type { RankingRecord } from "@/lib/services/scoreService";
 import { HomeView } from "@/app/components/HomeView";
 import { RankingErrorView } from "@/app/components/RankingErrorView";
 

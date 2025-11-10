@@ -9,11 +9,11 @@ import { ALLOWED_UPLOAD_EXTENSIONS, resolveWithinUploadRoot, resolveStoredFilePa
 import { createRequestLogger } from "@/lib/request-logger";
 import { getSeoulTimestamp } from "@/lib/time";
 import {
-  createEvaluationScore,
-  getEvaluationScoreSummaryForUser,
-  getEvaluationScoresForUser,
-  removeEvaluationScoreForUser,
-} from "@/lib/services/evaluationScoreService";
+  createScore,
+  getScoreSummaryForUser,
+  getScoresForUser,
+  removeScoreForUser,
+} from "@/lib/services/scoreService";
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const results = getEvaluationScoresForUser(sessionUser.id, projectNumber);
+  const results = getScoresForUser(sessionUser.id, projectNumber);
 
   const normalized = results.map((row) => ({
     id: row.id,
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
 
     const evaluatedAt = getSeoulTimestamp();
 
-    const insertedId = createEvaluationScore({
+    const insertedId = createScore({
       userId: sessionUser.id,
       projectNumber,
       score,
@@ -254,7 +254,7 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  const existing = getEvaluationScoreSummaryForUser(id, sessionUser.id);
+  const existing = getScoreSummaryForUser(id, sessionUser.id);
 
   if (!existing) {
     logRequest(404, { reason: "not_found", id });
@@ -265,7 +265,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    const removed = removeEvaluationScoreForUser(id, sessionUser.id);
+    const removed = removeScoreForUser(id, sessionUser.id);
 
     if (!removed) {
       logRequest(500, { action: "delete", scoreId: existing.id, reason: "delete_failed" });

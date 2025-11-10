@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/db";
-import { UserRecord } from "../type/UserRecord";
+import { UserCreateParams, UserRecord, UserUpdateParams, UserWithPasswordRecord } from "../type/User";
 
 const baseUserProjection = `
   id,
@@ -15,20 +15,8 @@ const baseUserProjection = `
   updated_at AS updatedAt
 `;
 
-export type UserWithPasswordRecord = UserRecord & {
-  passwordHash: string;
-};
-
 // Create
-export function createUser(input: {
-  studentNumber: string;
-  email?: string | null;
-  passwordHash: string;
-  name: string;
-  publicId: string;
-  role: string;
-  semester: number;
-}): number {
+export function createUser(input: UserCreateParams): number {
   const db = getDb();
   const result = db
     .prepare(
@@ -39,7 +27,7 @@ export function createUser(input: {
     )
     .run(
       input.studentNumber,
-      input.email ?? null,
+      input.email,
       input.passwordHash,
       input.name,
       input.publicId,
@@ -99,9 +87,7 @@ export function findUserByStudentNumber(studentNumber: string): UserRecord | nul
   return record ?? null;
 }
 
-export function findUserWithPasswordByStudentNumber(
-  studentNumber: string,
-): UserWithPasswordRecord | null {
+export function findUserWithPasswordByStudentNumber(studentNumber: string): UserWithPasswordRecord | null {
   const db = getDb();
   const record = db
     .prepare(
@@ -137,24 +123,32 @@ export function updateUserLastLogin(userId: number) {
   db.prepare("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?").run(userId);
 }
 
-export function updateUserById(input: {
-  id: number;
-  name: string;
-  studentNumber: string;
-  role: string;
-  semester: number;
-  email?: string | null;
-}): boolean {
+export function updateUserById(input : UserUpdateParams) : boolean {
   const db = getDb();
   const result = db
     .prepare(
       `
         UPDATE users
-        SET name = ?, student_number = ?, role = ?, semester = ?, email = ?
+        SET
+          student_number = COALESCE(?, student_number),
+          email = COALESCE(?, email),
+          name = COALESCE(?, name),
+          role = COALESCE(?, role),
+          semester = COALESCE(?, semester),
+          is_active = COALESCE(?, is_active),
+          updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `,
     )
-    .run(input.name, input.studentNumber, input.role, input.semester, input.email ?? null, input.id);
+    .run(
+      input.studentNumber ?? null,
+      input.email ?? null,
+      input.name ?? null,
+      input.role ?? null,
+      input.semester ?? null,
+      input.isActive ?? null,
+      input.id,
+    );
 
   return result.changes > 0;
 }
