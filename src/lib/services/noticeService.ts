@@ -1,4 +1,11 @@
-import { findAllActiveNotices } from "@/lib/repositories/noticeRepository";
+import {
+  deleteNoticeRecordById,
+  findAllActiveNotices,
+  findAllNotices,
+  findNoticeById,
+  insertNotice,
+  updateNoticeById,
+} from "@/lib/repositories/noticeRepository";
 import type { NoticeRecord } from "@/lib/type/NoticeRecord";
 
 export type Notice = {
@@ -38,5 +45,51 @@ export function getActiveNotices(): Notice[] {
   } catch (error) {
     console.error("Failed to fetch active notices", error);
     return [];
+  }
+}
+
+// Admin-facing helpers
+export function getAllNotices(): Notice[] {
+  try {
+    return findAllNotices().map(mapNoticeRecord);
+  } catch (error) {
+    console.error("Failed to fetch all notices", error);
+    return [];
+  }
+}
+
+export function createNotice(message: string, isActive: boolean): Notice | null {
+  try {
+    const id = insertNotice({ message, isActive });
+    const row = findNoticeById(id);
+    return row ? mapNoticeRecord(row) : null;
+  } catch (error) {
+    console.error("Failed to create notice", error);
+    return null;
+  }
+}
+
+export function updateNotice(
+  id: number,
+  fields: { message?: string; isActive?: boolean },
+): Notice | null {
+  try {
+    const changed = updateNoticeById(id, fields);
+    if (!changed) return null;
+    const row = findNoticeById(id);
+    return row ? mapNoticeRecord(row) : null;
+  } catch (error) {
+    console.error("Failed to update notice", error);
+    return null;
+  }
+}
+
+export function deleteNotice(id: number): boolean {
+  try {
+    const removed = deleteNoticeRecordById(id);
+    return removed > 0;
+  } catch (error) {
+    console.error("Failed to delete notice", error);
+    return false;
   }
 }

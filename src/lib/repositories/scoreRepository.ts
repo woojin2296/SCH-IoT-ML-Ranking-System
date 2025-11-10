@@ -184,8 +184,6 @@ export function listDistinctUserYears(): UserYearRow[] {
     .all() as UserYearRow[];
 }
 
-
-
 export function findRankingRowForUser(
   projectNumber: number,
   selectedYear: number,

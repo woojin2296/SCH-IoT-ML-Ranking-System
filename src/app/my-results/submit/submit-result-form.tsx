@@ -7,8 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { projects } from "@/lib/projects";
-import AppHero from "@/app/components/AppHero";
-import { AppNoticesList } from "@/app/components/AppNoticesList";
 import { Alert } from "@/components/ui/alert";
 
 type SubmitState = "idle" | "submitting" | "success" | "error";
@@ -101,9 +99,7 @@ export default function SubmitResultForm() {
   };
 
   return (
-    <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10 items-center">
-      <AppHero />
-      <AppNoticesList />
+    <>
       <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-4 text-center">
         <h2 className="text-xl font-bold">결과 제출</h2>
         {status === "success" ? (
@@ -179,6 +175,6 @@ export default function SubmitResultForm() {
           </div>
         </form>
       </div>
-    </div>
+    </>
   );
 }

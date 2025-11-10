@@ -4,11 +4,16 @@ import { redirect } from "next/navigation";
 
 import AppHero from "@/app/components/AppHero";
 import { AppNoticesList } from "@/app/components/AppNoticesList";
-import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/services/sessionService";
+import { projectFilterOptions as projects } from "@/lib/projects";
+import {
+  cleanupExpiredSessions,
+  getUserBySessionToken,
+} from "@/lib/services/sessionService";
 import { getBaseUrl } from "@/lib/url";
 import { getActiveNotices } from "@/lib/services/noticeService";
 
 import MyResultsTable from "./my-results-table";
+import AppNavigationClient from "../components/AppNavigationClient";
 
 type UserScoreRow = {
   id: number;
@@ -25,14 +30,6 @@ type MyResultsResponse = {
   projectNumber: number | null;
 };
 
-const projects = [
-  { number: null, label: "전체" },
-  { number: 1, label: "프로젝트 1" },
-  { number: 2, label: "프로젝트 2" },
-  { number: 3, label: "프로젝트 3" },
-  { number: 4, label: "프로젝트 4" },
-];
-
 export default async function MyResultsPage({
   searchParams,
 }: {
@@ -46,9 +43,7 @@ export default async function MyResultsPage({
     redirect("/login");
   }
 
-  const sessionUser = sessionToken
-    ? getUserBySessionToken(sessionToken)
-    : null;
+  const sessionUser = sessionToken ? getUserBySessionToken(sessionToken) : null;
 
   if (!sessionUser) {
     redirect("/login");
@@ -58,7 +53,10 @@ export default async function MyResultsPage({
   const projectParam = resolvedSearchParams?.project;
   const parsedProject = projectParam ? Number.parseInt(projectParam, 10) : null;
   const projectNumber =
-    parsedProject && Number.isInteger(parsedProject) && parsedProject >= 1 && parsedProject <= 4
+    parsedProject &&
+    Number.isInteger(parsedProject) &&
+    parsedProject >= 1 &&
+    parsedProject <= 4
       ? parsedProject
       : null;
 
@@ -72,7 +70,7 @@ export default async function MyResultsPage({
 
   let data: MyResultsResponse | null = null;
   try {
-    const response = await fetch(`${baseUrl}/api/auth/my-results${query}`, {
+    const response = await fetch(`${baseUrl}/api/my-results${query}`, {
       headers: {
         Cookie: cookieHeader,
       },
@@ -101,7 +99,8 @@ export default async function MyResultsPage({
         <AppHero />
         <AppNoticesList />
         <div className="mx-auto w-full max-w-3xl rounded-lg border border-neutral-200 bg-white px-6 py-4 text-center text-sm text-neutral-600 shadow-sm">
-          데이터 로딩 중 오류가 발생했습니다. 네트워크 상태를 확인하거나 문제가 지속될 경우 관리자에게 문의해주세요.
+          데이터 로딩 중 오류가 발생했습니다. 네트워크 상태를 확인하거나 문제가
+          지속될 경우 관리자에게 문의해주세요.
         </div>
       </div>
     );
@@ -118,6 +117,7 @@ export default async function MyResultsPage({
   return (
     <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10 items-center">
       <AppHero />
+      <AppNavigationClient isAdmin={isAdmin} pastYear={0} />
       <AppNoticesList />
       <header className="mx-auto flex w-full max-w-3xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -126,59 +126,45 @@ export default async function MyResultsPage({
             개인 제출 기록과 점수를 확인할 수 있습니다.
           </p>
         </div>
-        <div className="flex flex-col gap-2 md:flex-row md:items-center">
-          <Link
-            href="/my-results/submit"
-            className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-emerald-700"
-          >
-            결과 추가하기
-          </Link>
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center rounded-md bg-[#265392] px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-[#1f4275]"
-          >
-            랭킹 보드로 돌아가기
-          </Link>
-          {isAdmin ? (
-            <Link
-              href="/admin/users"
-              className="inline-flex items-center justify-center rounded-md bg-yellow-400 px-4 py-2 text-sm font-medium text-neutral-900 shadow transition hover:bg-yellow-500"
-            >
-              관리자 페이지
-            </Link>
-          ) : null}
-          <form action="/api/logout" method="post">
-            <button
-              type="submit"
-              className="inline-flex w-full items-center justify-center rounded-md bg-red-600 border border-neutral-300 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-red-700 md:w-auto"
-            >
-              로그아웃
-            </button>
-          </form>
-        </div>
       </header>
 
-      <main className="mx-auto mt-8 w-full max-w-3xl space-y-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {projects.map((project) => {
-            const isActive = project.number === projectNumber || (project.number === null && projectNumber === null);
-            const href =
-              project.number === null ? "/my-results" : `/my-results?project=${project.number}`;
-            return (
-              <Link
-                key={project.label}
-                href={href}
-                className={`rounded-md px-3 py-1 text-sm font-medium transition ${
-                  isActive
-                    ? "bg-[#265392] text-white shadow"
-                    : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
-                }`}
-              >
-                {project.label}
-              </Link>
-            );
-          })}
+      <main className="mx-auto w-full max-w-3xl space-y-4">
+        <div className="flex flex-wrap items-center justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            {projects.map((project) => {
+              const isActive =
+                project.number === projectNumber ||
+                (project.number === null && projectNumber === null);
+              const href =
+                project.number === null
+                  ? "/my-results"
+                  : `/my-results?project=${project.number}`;
+              return (
+                <Link
+                  key={project.label}
+                  href={href}
+                  className={`rounded-md px-3 py-1 text-sm font-medium transition ${
+                    isActive
+                      ? "bg-[#265392] text-white shadow"
+                      : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
+                  }`}
+                >
+                  {project.label}
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-col gap-2 md:flex-row md:items-center">
+            <Link
+              href="/my-results/submit"
+              className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-emerald-700"
+            >
+              결과 추가하기
+            </Link>
+          </div>
         </div>
+
         <MyResultsTable scores={scores} />
       </main>
     </div>
