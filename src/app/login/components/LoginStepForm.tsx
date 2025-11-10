@@ -55,7 +55,7 @@ export default function LoginStepForm({
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch("/api/login", {
+        const response = await fetch("/api/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

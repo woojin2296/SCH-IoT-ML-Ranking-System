@@ -3,7 +3,7 @@ export type ScoreRow = {
   userId: number;
   projectNumber: number;
   score: number;
-  evaluatedAt: string;
+  createdAt: string;
   filePath: string | null;
   fileName: string | null;
   fileType: string | null;
@@ -33,7 +33,7 @@ export type RankingRow = {
   publicId: string;
   projectNumber: number;
   score: number;
-  evaluatedAt: string;
+  createdAt: string;
   position: number;
 };
 

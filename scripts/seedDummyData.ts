@@ -43,7 +43,7 @@ const insertScoreStatement = db.prepare(
       file_name,
       file_type,
       file_size,
-      evaluated_at
+      created_at
     )
     VALUES (?, ?, ?, NULL, ?, ?, ?, ?)
   `,
@@ -90,7 +90,7 @@ function computeFileSize(userIndex: number, projectNumber: number, submissionInd
   return 75_000 + base;
 }
 
-function buildEvaluationDate(year: number, projectNumber: number, submissionIndex: number, userIndex: number) {
+function buildSubmissionDate(year: number, projectNumber: number, submissionIndex: number, userIndex: number) {
   const monthIndex = (projectNumber - 1) * 3 + (submissionIndex - 1);
   const day = ((userIndex + submissionIndex) % 26) + 1;
   const hour = 9 + submissionIndex;
@@ -143,7 +143,7 @@ const seedDummyData = db.transaction((): SeedStats => {
 
         for (let submissionIndex = existingScoreCount + 1; submissionIndex <= SUBMISSIONS_PER_PROJECT; submissionIndex += 1) {
           const scoreValue = computeScore(year, index, projectNumber, submissionIndex);
-          const evaluatedAt = buildEvaluationDate(year, projectNumber, submissionIndex, index);
+          const createdAt = buildSubmissionDate(year, projectNumber, submissionIndex, index);
           const fileName = `project-${projectNumber}-submission-${suffix}-${submissionIndex}.ipynb`;
           const fileSize = computeFileSize(index, projectNumber, submissionIndex);
 
@@ -154,7 +154,7 @@ const seedDummyData = db.transaction((): SeedStats => {
             fileName,
             "application/json",
             fileSize,
-            evaluatedAt,
+            createdAt,
           );
           stats.scoresCreated += 1;
         }

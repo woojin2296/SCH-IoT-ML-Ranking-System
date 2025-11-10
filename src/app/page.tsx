@@ -3,59 +3,40 @@ import { redirect } from "next/navigation";
 
 import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/services/sessionService";
 import { projects } from "@/lib/projects";
-import AppHero from "./components/AppHero";
-import { AppNoticesList } from "./components/AppNoticesList";
-import { RankingsBoard } from "./RankingsBoard";
-import { getDistinctUserYears } from "@/lib/services/scoreService";
-import AppNavigationClient from "./components/AppNavigationClient";
+import AppHero from "../components/AppHero";
+import { AppNoticesList } from "../components/AppNoticesList";
+import { RankingsBoard } from "./components/RankingsBoard";
+import AppNavigationClient from "../components/AppNavigationClient";
 
-type HomeSearchParams = {
-  project?: string | string[];
-  year?: string | string[];
-};
 
-function pickSingle(value?: string | string[]): string | undefined {
-  if (!value) return undefined;
-  return Array.isArray(value) ? value[0] : value;
+function getProjectFromParams(value?: string | string[]): number {
+  if (!value) return 1;
+  const singleValue = Array.isArray(value) ? value[0] : value;
+  if (!singleValue) return 1;
+  const parsed = Number(singleValue);
+  return Number.isInteger(parsed) && parsed > 0 && parsed <= projects.length ? parsed : 1;
 }
 
-export default async function Home({ searchParams }: { searchParams: Promise<HomeSearchParams> }) {
+export default async function Home({ searchParams }: { searchParams: { project: string | string[] } }) {
   cleanupExpiredSessions();
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session_token")?.value;
-  const sessionUser = sessionToken
-    ? getUserBySessionToken(sessionToken)
-    : null;
-  if (!sessionUser) {
-    redirect("/login");
-  }
+  if (!sessionToken) redirect("/login");
+  const sessionUser = sessionToken ? getUserBySessionToken(sessionToken): null;
+  if (!sessionUser) redirect("/login");
+
   const userId = sessionUser.id;
-  const resolvedParams = await searchParams;
-
-  const years = getDistinctUserYears();
-  const currentYear = years[0] ?? new Date().getFullYear();
-  const pastYear = years[1] ?? currentYear - 1;
-
-  const projectParam = pickSingle(resolvedParams.project);
-  const projectFromParams = Number(projectParam);
-  const activeProject =
-    Number.isInteger(projectFromParams) && projectFromParams >= 1 && projectFromParams <= projects.length
-      ? projectFromParams
-      : 1;
-
-  const yearParam = pickSingle(resolvedParams.year);
-  const requestedYear = Number(yearParam);
+  const params = await searchParams;
+  const activeProject = getProjectFromParams(params.project);
 
   return (
     <div className="min-h-svh flex flex-col items-center gap-4 p-6 md:p-10">
       <AppHero />
-      <AppNavigationClient isAdmin={sessionUser.role === "admin"} pastYear={pastYear} />
+      <AppNavigationClient isAdmin={sessionUser.role === "admin"} />
       <AppNoticesList />
       <RankingsBoard
         sessionUserId={userId}
-        projects={projects.map((project) => ({ number: project.number, label: project.label }))}
         activeProject={activeProject}
-        requestedYear={Number.isInteger(requestedYear) ? requestedYear : undefined}
       />
     </div>
   );

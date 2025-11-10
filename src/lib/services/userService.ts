@@ -147,7 +147,7 @@ export async function handleRegisterUserApi(request: NextRequest): Promise<NextR
   } catch {
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
-      path: "/api/users",
+      path: "/api/user",
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_json" },
@@ -172,7 +172,7 @@ export async function handleRegisterUserApi(request: NextRequest): Promise<NextR
     console.error("Failed to register user", error);
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
-      path: "/api/users",
+      path: "/api/user",
       method: request.method,
       status: 500,
       metadata: { reason: "insert_failed", studentNumber: payload.studentNumber?.trim() },
@@ -187,7 +187,7 @@ export async function handleRegisterUserApi(request: NextRequest): Promise<NextR
   if (result.status === "missing_fields") {
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
-      path: "/api/users",
+      path: "/api/user",
       method: request.method,
       status: 400,
       metadata: { reason: "missing_fields", studentNumber: payload.studentNumber?.trim() },
@@ -202,7 +202,7 @@ export async function handleRegisterUserApi(request: NextRequest): Promise<NextR
   if (result.status === "invalid_name") {
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
-      path: "/api/users",
+      path: "/api/user",
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_name", studentNumber: payload.studentNumber?.trim() },
@@ -217,7 +217,7 @@ export async function handleRegisterUserApi(request: NextRequest): Promise<NextR
   if (result.status === "invalid_student_number") {
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
-      path: "/api/users",
+      path: "/api/user",
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_student_number", studentNumber: payload.studentNumber?.trim() },
@@ -232,7 +232,7 @@ export async function handleRegisterUserApi(request: NextRequest): Promise<NextR
   if (result.status === "invalid_role") {
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
-      path: "/api/users",
+      path: "/api/user",
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_role", role: payload.role },
@@ -247,7 +247,7 @@ export async function handleRegisterUserApi(request: NextRequest): Promise<NextR
   if (result.status === "invalid_email") {
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
-      path: "/api/users",
+      path: "/api/user",
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_email", email: payload.email },
@@ -262,7 +262,7 @@ export async function handleRegisterUserApi(request: NextRequest): Promise<NextR
   if (result.status === "duplicate_student_number") {
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
-      path: "/api/users",
+      path: "/api/user",
       method: request.method,
       status: 409,
       metadata: { reason: "duplicate_student_number", studentNumber: payload.studentNumber?.trim() },
@@ -277,7 +277,7 @@ export async function handleRegisterUserApi(request: NextRequest): Promise<NextR
   if (result.status === "duplicate_email") {
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
-      path: "/api/users",
+      path: "/api/user",
       method: request.method,
       status: 409,
       metadata: { reason: "duplicate_email", email: payload.email?.trim() },
@@ -292,7 +292,7 @@ export async function handleRegisterUserApi(request: NextRequest): Promise<NextR
   if (result.status !== "success") {
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
-      path: "/api/users",
+      path: "/api/user",
       method: request.method,
       status: 500,
       metadata: { reason: "unexpected_error" },
@@ -323,7 +323,7 @@ export async function handleRegisterUserApi(request: NextRequest): Promise<NextR
 
   logUserRequest({
     source: resolveRequestSource(user.id, clientIp),
-    path: "/api/users",
+    path: "/api/user",
     method: request.method,
     status: 201,
     metadata: { studentNumber: user.studentNumber, role },
@@ -344,7 +344,7 @@ export async function handlePublicGetUserByStudentNumberApi(
   if (!normalizedStudentNumber || !/^\d{8}$/.test(normalizedStudentNumber)) {
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
-      path: `/api/users/${studentNumberParam}`,
+      path: `/api/user/${studentNumberParam}`,
       method: request.method,
       status: 400,
       metadata: { reason: "invalid_student_number", studentNumber: studentNumberParam },
@@ -361,7 +361,7 @@ export async function handlePublicGetUserByStudentNumberApi(
 
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
-      path: `/api/users/${studentNumberParam}`,
+      path: `/api/user/${studentNumberParam}`,
       method: request.method,
       status: 200,
       metadata: { found: Boolean(record) },
@@ -373,7 +373,7 @@ export async function handlePublicGetUserByStudentNumberApi(
     console.error("Failed to fetch user by student number", error);
     logUserRequest({
       source: resolveRequestSource(null, clientIp),
-      path: `/api/users/${studentNumberParam}`,
+      path: `/api/user/${studentNumberParam}`,
       method: request.method,
       status: 500,
       metadata: { reason: "internal_error" },

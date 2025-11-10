@@ -9,7 +9,7 @@ type ScoreRow = {
   id: number;
   projectNumber: number;
   score: number;
-  evaluatedAt: string;
+  createdAt: string;
   fileName: string | null;
   fileSize: number | null;
   hasFile: boolean;
@@ -59,7 +59,7 @@ export default function MyResultsTable({ scores }: Props) {
     setPendingId(id);
 
     try {
-      const response = await fetch("/api/auth/my-results", {
+      const response = await fetch("/api/score/my", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -124,12 +124,12 @@ export default function MyResultsTable({ scores }: Props) {
                 <td className="px-4 py-3">프로젝트 {row.projectNumber}</td>
                 <td className="px-4 py-3 text-right">{row.score.toFixed(4)}</td>
                 <td className="px-4 py-3">
-                  {dateTimeFormatter.format(new Date(row.evaluatedAt))}
+                  {dateTimeFormatter.format(new Date(row.createdAt))}
                 </td>
                 <td className="px-4 py-3 text-center">
                   {row.hasFile ? (
                     <a
-                      href={`/api/auth/my-results/${row.id}/file`}
+                      href={`/api/score/my/${row.id}/file`}
                       className="inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-xs font-medium text-[#265392] transition hover:border-[#265392]"
                       target="_blank"
                       rel="noopener noreferrer"

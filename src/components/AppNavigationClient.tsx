@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
-export default function AppNavigationClient({ isAdmin, pastYear }: { isAdmin: boolean; pastYear: number }) {
+export default function AppNavigationClient({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const year = searchParams.get("year");
@@ -13,9 +13,9 @@ export default function AppNavigationClient({ isAdmin, pastYear }: { isAdmin: bo
   const inactive = "bg-neutral-100 text-neutral-700 hover:bg-neutral-200";
 
   const isCurrentActive = pathname === "/" && !year;
-  const isPastActive = pathname.startsWith("/rankings/past") || (pathname === "/" && !!year);
-  const isMyResultsActive = pathname.startsWith("/my-results");
-  const isAccountActive = pathname.startsWith("/login") || pathname.startsWith("/account");
+  const isPastActive = pathname.startsWith("/rankings");
+  const isMyResultsActive = pathname.startsWith("/mypage/results");
+  const isAccountActive = pathname.startsWith("/mypage/account");
   const isAdminActive = pathname.startsWith("/admin");
 
   return (
@@ -27,26 +27,23 @@ export default function AppNavigationClient({ isAdmin, pastYear }: { isAdmin: bo
           </Link>
         </li>
         <li>
-          <Link href={`/rankings/past?year=${pastYear}`} className={`${base} ${isPastActive ? active : inactive}`}>
-            과거 랭킹
+          <Link href={`/rankings`} className={`${base} ${isPastActive ? active : inactive}`}>
+            전체 랭킹
           </Link>
         </li>
         <li>
-          <Link href="/my-results" className={`${base} ${isMyResultsActive ? active : inactive}`}>
+          <Link href="/mypage/results" className={`${base} ${isMyResultsActive ? active : inactive}`}>
             내 결과 관리
           </Link>
         </li>
         <li>
-          <Link href="/login" className={`${base} ${isAccountActive ? active : inactive}`}>
+          <Link href="/mypage/account" className={`${base} ${isAccountActive ? active : inactive}`}>
             내 계정
           </Link>
         </li>
-        {isAdmin && !isMyResultsActive ? (
+        {isAdmin ? (
           <li>
-            <Link
-              href="/admin/users"
-              className={`${base} ${isAdminActive ? active : "bg-yellow-400 text-neutral-900 hover:bg-yellow-500"}`}
-            >
+            <Link href="/admin/users" className={`${base} ${isAdminActive ? active : "bg-yellow-400 text-neutral-900 hover:bg-yellow-500"}`}> 
               관리자 페이지
             </Link>
           </li>

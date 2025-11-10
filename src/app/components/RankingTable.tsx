@@ -6,6 +6,7 @@ export type RankingTableRow = {
   publicId: string;
   position: number;
   score: number;
+  createdAt: string;
 };
 
 type RankingTableProps = {
@@ -21,27 +22,42 @@ const topRankClasses: Record<number, string> = {
 
 const medalIcons = ["🥇", "🥈", "🥉"];
 
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+  return date.toLocaleString("ko-KR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Seoul",
+  });
+}
+
 export function RankingTable({ rankings, sessionUserId }: RankingTableProps) {
   return (
     <div className="overflow-hidden rounded-lg border">
-      <table className="min-w-full divide-y divide-neutral-200 bg-white text-sm">
-        <thead className="bg-neutral-50 text-left text-xs font-semibold uppercase tracking-wide text-neutral-500">
+      <table className="min-w-full divide-y divide-neutral-200 bg-white text-sm text-center">
+        <thead className="bg-neutral-50 text-xs font-semibold uppercase tracking-wide text-neutral-500">
           <tr>
             <th scope="col" className="px-4 py-3">
               순위
             </th>
             <th scope="col" className="px-4 py-3">
+              점수
+            </th>
+            <th scope="col" className="px-4 py-3">
               익명 ID
             </th>
-            <th scope="col" className="px-4 py-3 text-right">
-              점수
+            <th scope="col" className="px-4 py-3">
+              등록 날짜
             </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-neutral-100 text-neutral-700">
           {rankings.length === 0 ? (
             <tr>
-              <td colSpan={3} className="px-4 py-6 text-center text-neutral-500">
+              <td colSpan={4} className="px-4 py-6 text-neutral-500">
                 아직 등록된 랭킹 정보가 없습니다.
               </td>
             </tr>
@@ -61,8 +77,9 @@ export function RankingTable({ rankings, sessionUserId }: RankingTableProps) {
               return (
                 <tr key={row.id} className={rowClassNames}>
                   <td className="px-4 py-3 font-semibold">{rankLabel}</td>
+                  <td className="px-4 py-3 font-medium">{row.score.toFixed(4)}</td>
                   <td className="px-4 py-3 text-neutral-500">{row.publicId}</td>
-                  <td className="px-4 py-3 text-right">{row.score.toFixed(4)}</td>
+                  <td className="px-4 py-3 text-neutral-500">{formatDateTime(row.createdAt)}</td>
                 </tr>
               );
             })

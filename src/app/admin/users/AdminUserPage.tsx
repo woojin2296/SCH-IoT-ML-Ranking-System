@@ -1,8 +1,8 @@
-import { listUsersOrderedByCreation } from "@/lib/services/userService";
 import AdminUserRow from "./AdminUserRow";
+import { findAllUsers } from "@/lib/repositories/userRepository";
 
 export function AdminUserPage() {
-  const users = listUsersOrderedByCreation();
+  const users = findAllUsers();
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-4 py-6">

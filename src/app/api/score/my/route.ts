@@ -16,12 +16,12 @@ import {
 
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB
 
-// GET /api/my-results
+// GET /api/score/my
 // - Requires authenticated session.
 // - Optional `project` query accepts integer 1-4; otherwise returns all results.
 // - Responds with normalized score records and attachment availability.
 export async function GET(request: NextRequest) {
-  const baseLogger = createRequestLogger(request, "/api/my-results", request.method);
+  const baseLogger = createRequestLogger(request, "/api/score/my", request.method);
   const sessionUser = await requireSessionUser();
 
   if (!sessionUser) {
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const logRequest = createRequestLogger(request, "/api/my-results", request.method, sessionUser.id);
+  const logRequest = createRequestLogger(request, "/api/score/my", request.method, sessionUser.id);
 
   const projectParam = request.nextUrl.searchParams.get("project");
   const projectNumber = projectParam ? Number.parseInt(projectParam, 10) : null;
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     id: row.id,
     projectNumber: row.projectNumber,
     score: row.score,
-    evaluatedAt: row.evaluatedAt,
+    createdAt: row.createdAt,
     fileName: row.fileName,
     fileSize: row.fileSize,
     hasFile: row.hasFile,
@@ -62,12 +62,12 @@ export async function GET(request: NextRequest) {
   });
 }
 
-// POST /api/my-results
+// POST /api/score/my
 // - Requires authenticated session.
 // - Accepts multipart form with `projectNumber` (1-4), numeric `score`, and `attachment` file (.ipynb/.py <= 10MB).
 // - Validates payload before writing attachment and inserting evaluation record.
 export async function POST(request: NextRequest) {
-  const baseLogger = createRequestLogger(request, "/api/my-results", request.method);
+  const baseLogger = createRequestLogger(request, "/api/score/my", request.method);
   const sessionUser = await requireSessionUser();
 
   if (!sessionUser) {
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const logRequest = createRequestLogger(request, "/api/my-results", request.method, sessionUser.id);
+  const logRequest = createRequestLogger(request, "/api/score/my", request.method, sessionUser.id);
 
   const formData = await request.formData();
   const projectNumberRaw = formData.get("projectNumber");
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
   try {
     await writeFile(fullStoredPath, buffer);
 
-    const evaluatedAt = getSeoulTimestamp();
+    const createdAt = getSeoulTimestamp();
 
     const insertedId = createScore({
       userId: sessionUser.id,
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
       fileName: originalFileName,
       fileType: inferredFileType,
       fileSize: file.size,
-      evaluatedAt,
+      createdAt,
     });
 
     logRequest(201, {
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       score,
       fileName: originalFileName,
       fileSize: file.size,
-      evaluatedAt,
+      createdAt,
     });
 
     return NextResponse.json(
@@ -204,12 +204,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE /api/my-results
+// DELETE /api/score/my
 // - Requires authenticated session.
 // - Accepts JSON body containing positive integer `id` owned by caller.
 // - Deletes the evaluation record and associated stored file if present.
 export async function DELETE(request: NextRequest) {
-  const baseLogger = createRequestLogger(request, "/api/my-results", request.method);
+  const baseLogger = createRequestLogger(request, "/api/score/my", request.method);
   const sessionUser = await requireSessionUser();
 
   if (!sessionUser) {
@@ -217,7 +217,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const logRequest = createRequestLogger(request, "/api/my-results", request.method, sessionUser.id);
+  const logRequest = createRequestLogger(request, "/api/score/my", request.method, sessionUser.id);
 
   type Payload = {
     id?: number;

@@ -2,8 +2,8 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import AppHero from "@/app/components/AppHero";
-import { AppNoticesList } from "@/app/components/AppNoticesList";
+import AppHero from "@/components/AppHero";
+import { AppNoticesList } from "@/components/AppNoticesList";
 import { projectFilterOptions as projects } from "@/lib/projects";
 import {
   cleanupExpiredSessions,
@@ -13,13 +13,13 @@ import { getBaseUrl } from "@/lib/url";
 import { getActiveNotices } from "@/lib/services/noticeService";
 
 import MyResultsTable from "./my-results-table";
-import AppNavigationClient from "../components/AppNavigationClient";
+import AppNavigationClient from "@/components/AppNavigationClient";
 
 type UserScoreRow = {
   id: number;
   projectNumber: number;
   score: number;
-  evaluatedAt: string;
+  createdAt: string;
   fileName: string | null;
   fileSize: number | null;
   hasFile: boolean;
@@ -38,16 +38,9 @@ export default async function MyResultsPage({
   cleanupExpiredSessions();
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session_token")?.value;
-
-  if (!sessionToken) {
-    redirect("/login");
-  }
-
-  const sessionUser = sessionToken ? getUserBySessionToken(sessionToken) : null;
-
-  if (!sessionUser) {
-    redirect("/login");
-  }
+  if (!sessionToken) redirect("/login");
+  const sessionUser = sessionToken ? getUserBySessionToken(sessionToken): null;
+  if (!sessionUser) redirect("/login");
 
   const resolvedSearchParams = await searchParams;
   const projectParam = resolvedSearchParams?.project;
@@ -70,7 +63,7 @@ export default async function MyResultsPage({
 
   let data: MyResultsResponse | null = null;
   try {
-    const response = await fetch(`${baseUrl}/api/my-results${query}`, {
+    const response = await fetch(`${baseUrl}/api/score/my${query}`, {
       headers: {
         Cookie: cookieHeader,
       },
@@ -117,7 +110,7 @@ export default async function MyResultsPage({
   return (
     <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10 items-center">
       <AppHero />
-      <AppNavigationClient isAdmin={isAdmin} pastYear={0} />
+      <AppNavigationClient isAdmin={isAdmin} />
       <AppNoticesList />
       <header className="mx-auto flex w-full max-w-3xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -137,8 +130,8 @@ export default async function MyResultsPage({
                 (project.number === null && projectNumber === null);
               const href =
                 project.number === null
-                  ? "/my-results"
-                  : `/my-results?project=${project.number}`;
+                  ? "/mypage/results"
+                  : `/mypage/results?project=${project.number}`;
               return (
                 <Link
                   key={project.label}
@@ -157,7 +150,7 @@ export default async function MyResultsPage({
 
           <div className="flex flex-col gap-2 md:flex-row md:items-center">
             <Link
-              href="/my-results/submit"
+              href="/mypage/results/submit"
               className="inline-flex items-center justify-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow transition hover:bg-emerald-700"
             >
               결과 추가하기

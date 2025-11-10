@@ -21,7 +21,7 @@ export type UserScore = {
   userId: number;
   projectNumber: number;
   score: number;
-  evaluatedAt: string;
+  createdAt: string;
   fileName: string | null;
   fileType: string | null;
   fileSize: number | null;
@@ -56,7 +56,7 @@ export function getScoresForUser(
     userId: row.userId,
     projectNumber: row.projectNumber,
     score: row.score,
-    evaluatedAt: row.evaluatedAt,
+    createdAt: row.createdAt,
     fileName: row.fileName,
     fileType: row.fileType,
     fileSize: row.fileSize,
@@ -72,7 +72,7 @@ export function createScore(input: {
   fileName: string | null;
   fileType: string | null;
   fileSize: number | null;
-  evaluatedAt: string;
+  createdAt: string;
 }): number {
   return insertScore(input);
 }
@@ -118,7 +118,7 @@ export function getRankingSummaryForUser(
   projectNumber: number,
   selectedYear: number,
   userId: number,
-): { rank: number; score: number; evaluatedAt: string } | null {
+): { rank: number; score: number; createdAt: string } | null {
   return findRankingRowForUser(projectNumber, selectedYear, userId);
 }
 

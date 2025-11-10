@@ -7,7 +7,7 @@ import { resolveStoredFilePath } from "@/lib/uploads";
 import { createRequestLogger } from "@/lib/request-logger";
 import { getScoreFileMeta } from "@/lib/services/scoreService";
 
-// GET /api/my-results/[id]/file
+// GET /api/score/my/[id]/file
 // - Requires authenticated session (owner or admin).
 // - Validates numeric `id` path param and ensures attachment exists before streaming download.
 export async function GET(
