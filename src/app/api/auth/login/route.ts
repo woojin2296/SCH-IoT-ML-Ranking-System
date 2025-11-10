@@ -9,7 +9,7 @@ type LoginPayload = {
   password?: string;
 };
 
-// POST /api/login
+// POST /api/auth/login
 // - Accepts JSON body with 8-digit `studentNumber` and `password`.
 // - Rejects inactive accounts and invalid credentials; responds with 401/403/400 errors.
 // - On success revokes previous sessions, issues new session cookie, and returns user profile.

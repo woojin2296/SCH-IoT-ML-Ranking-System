@@ -44,7 +44,6 @@ CREATE TABLE IF NOT EXISTS scores (
   file_name TEXT,
   file_type TEXT,
   file_size INTEGER,
-  evaluated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -52,8 +51,6 @@ CREATE TABLE IF NOT EXISTS scores (
 
 CREATE INDEX IF NOT EXISTS idx_scores_user_id ON scores(user_id);
 CREATE INDEX IF NOT EXISTS idx_scores_project_score ON scores(project_number, score DESC);
-CREATE INDEX IF NOT EXISTS idx_scores_evaluated_at ON scores(evaluated_at);
-
 CREATE TRIGGER IF NOT EXISTS scores_updated_at_trigger
 AFTER UPDATE ON scores
 BEGIN
@@ -89,18 +86,4 @@ BEGIN
   UPDATE notices
   SET updated_at = CURRENT_TIMESTAMP
   WHERE id = NEW.id;
-END;
-
-CREATE TABLE IF NOT EXISTS app_settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TRIGGER IF NOT EXISTS app_settings_updated_at_trigger
-AFTER UPDATE ON app_settings
-BEGIN
-  UPDATE app_settings
-  SET updated_at = CURRENT_TIMESTAMP
-  WHERE key = NEW.key;
 END;

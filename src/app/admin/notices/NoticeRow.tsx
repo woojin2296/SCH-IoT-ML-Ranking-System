@@ -75,7 +75,7 @@ export default function NoticeRow({ notice, isNew }: { notice: Notice; isNew?: b
 
   return (
     <tr>
-      <td className="px-4 py-3">{isNew ? "새 공지" : notice.id}</td>
+      <td className="px-4 py-3 min-w-[100px]">{isNew ? "새 공지" : notice.id}</td>
       <td className="px-4 py-3 w-full">
         <input
           type="text"
@@ -87,7 +87,7 @@ export default function NoticeRow({ notice, isNew }: { notice: Notice; isNew?: b
         />
       </td>
       <td className="px-4 py-3">
-        <label className="inline-flex items-center gap-2 text-sm">
+        <label className="inline-flex items-center gap-2 text-sm min-w-[70px]">
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} disabled={saving} />
           활성화
         </label>

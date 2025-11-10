@@ -3,7 +3,7 @@ import { handlePublicGetUserByStudentNumberApi } from "@/lib/services/userServic
 
 export const dynamic = "force-dynamic";
 
-// GET /api/users/[studentNumber]
+// GET /api/user/[studentNumber]
 // - Public endpoint used for availability checks.
 // - Validates dynamic segment as 8-digit student number and returns existence flag plus record.
 type RouteParams = {

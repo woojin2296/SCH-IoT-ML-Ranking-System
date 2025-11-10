@@ -9,7 +9,7 @@ import {
 import { logUserRequest, resolveRequestSource } from "@/lib/services/requestLogService";
 import { getRequestIp } from "@/lib/request";
 
-// POST /api/logout
+// POST /api/auth/logout
 // - Requires valid session cookie if present; silently succeeds when missing.
 // - Cleans up session record, clears cookie, and redirects to /login with 303.
 export async function POST(request: NextRequest) {
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   logUserRequest({
     source: resolveRequestSource(sessionUser?.id ?? null, clientIp),
-    path: "/api/logout",
+    path: "/api/auth/logout",
     method: request.method,
     status: 303,
     ipAddress: resolvedIp,

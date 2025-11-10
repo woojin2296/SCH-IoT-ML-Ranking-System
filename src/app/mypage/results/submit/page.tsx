@@ -1,6 +1,6 @@
-import AppHero from "@/app/components/AppHero";
+import AppHero from "@/components/AppHero";
 import SubmitResultForm from "./submit-result-form";
-import { AppNoticesList } from "@/app/components/AppNoticesList";
+import { AppNoticesList } from "@/components/AppNoticesList";
 
 export default function SubmitResultPage() {
   return (

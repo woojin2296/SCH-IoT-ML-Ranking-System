@@ -6,11 +6,11 @@ const PUBLIC_PATHS = new Set<string>([
   "/favicon.ico",
   "/robots.txt",
   "/sitemap.xml",
-  "/api/login",
+  "/api/auth/login",
   "/api/session/validate",
 ]);
 
-const PUBLIC_PREFIXES = ["/_next", "/static", "/api/notices", "/api/users"];
+const PUBLIC_PREFIXES = ["/_next", "/static", "/api/notice", "/api/user"];
 
 function isPublicPath(pathname: string) {
   if (PUBLIC_PATHS.has(pathname)) {

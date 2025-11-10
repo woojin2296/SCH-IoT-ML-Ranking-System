@@ -23,7 +23,7 @@ export default function SubmitResultForm() {
   useEffect(() => {
     if (status === "success") {
       const timer = setTimeout(() => {
-        router.replace("/my-results");
+        router.replace("/mypage/results");
         router.refresh();
       }, 1200);
       return () => clearTimeout(timer);
@@ -34,7 +34,7 @@ export default function SubmitResultForm() {
   useEffect(() => {
     const fetchNotice = async () => {
       try {
-        const response = await fetch("/api/notices");
+        const response = await fetch("/api/notice");
         if (!response.ok) return;
         const data = (await response.json()) as { notices?: { message: string }[] };
         if (data.notices?.length) {
@@ -70,7 +70,7 @@ export default function SubmitResultForm() {
       formData.append("score", String(numericScore));
       formData.append("attachment", file);
 
-      const response = await fetch("/api/auth/my-results", {
+      const response = await fetch("/api/score/my", {
         method: "POST",
         body: formData,
       });

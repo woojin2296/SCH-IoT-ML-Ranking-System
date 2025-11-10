@@ -87,7 +87,7 @@ export default function RegisterStepForm({ studentNumber, onSuccess }: Props) {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch("/api/users", {
+        const response = await fetch("/api/user", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",

@@ -18,11 +18,11 @@ export function listRankingRows(projectNumber: number, selectedYear: number): Ra
             es.user_id,
             es.project_number,
             es.score,
-            es.evaluated_at,
+            es.created_at,
             u.public_id,
             ROW_NUMBER() OVER (
               PARTITION BY es.user_id
-              ORDER BY es.score DESC, es.evaluated_at ASC
+              ORDER BY es.score DESC, es.created_at ASC
             ) AS per_user_rank
         FROM scores es
         INNER JOIN users u ON u.id = es.user_id
@@ -40,8 +40,8 @@ export function listRankingRows(projectNumber: number, selectedYear: number): Ra
           public_id AS publicId,
           project_number AS projectNumber,
           score,
-          evaluated_at AS evaluatedAt,
-          ROW_NUMBER() OVER (ORDER BY score DESC, evaluated_at ASC) AS position
+          created_at AS createdAt,
+          ROW_NUMBER() OVER (ORDER BY score DESC, created_at ASC) AS position
         FROM best_scores
         WHERE per_user_rank = 1
         ORDER BY position ASC
@@ -58,7 +58,7 @@ export function listScoresByUser(userId: number, projectNumber?: number | null):
       user_id AS userId,
       project_number AS projectNumber,
       score,
-      evaluated_at AS evaluatedAt,
+      created_at AS createdAt,
       file_path AS filePath,
       file_name AS fileName,
       file_type AS fileType,
@@ -66,7 +66,7 @@ export function listScoresByUser(userId: number, projectNumber?: number | null):
     FROM scores
     WHERE user_id = ?
       ${projectNumber !== null && projectNumber !== undefined ? "AND project_number = ?" : ""}
-    ORDER BY project_number ASC, evaluated_at DESC
+    ORDER BY project_number ASC, created_at DESC
   `;
 
   return projectNumber !== null && projectNumber !== undefined
@@ -82,7 +82,7 @@ export function insertScore(input: {
   fileName: string | null;
   fileType: string | null;
   fileSize: number | null;
-  evaluatedAt: string;
+  createdAt: string;
 }): number {
   const db = getDb();
   const result = db
@@ -96,7 +96,7 @@ export function insertScore(input: {
           file_name,
           file_type,
           file_size,
-          evaluated_at
+          created_at
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `,
@@ -109,7 +109,7 @@ export function insertScore(input: {
       input.fileName,
       input.fileType,
       input.fileSize,
-      input.evaluatedAt,
+      input.createdAt,
     );
 
   return Number(result.lastInsertRowid);
@@ -188,7 +188,7 @@ export function findRankingRowForUser(
   projectNumber: number,
   selectedYear: number,
   userId: number,
-): { rank: number; score: number; evaluatedAt: string } | null {
+): { rank: number; score: number; createdAt: string } | null {
   const db = getDb();
   const row = db
     .prepare(
@@ -199,10 +199,10 @@ export function findRankingRowForUser(
             es.user_id,
             es.project_number,
             es.score,
-            es.evaluated_at,
+            es.created_at,
             ROW_NUMBER() OVER (
               PARTITION BY es.user_id
-              ORDER BY es.score DESC, es.evaluated_at ASC
+              ORDER BY es.score DESC, es.created_at ASC
             ) AS per_user_rank
           FROM scores es
           INNER JOIN users u ON u.id = es.user_id
@@ -220,22 +220,22 @@ export function findRankingRowForUser(
             user_id,
             project_number,
             score,
-            evaluated_at,
-            ROW_NUMBER() OVER (ORDER BY score DESC, evaluated_at ASC) AS overall_rank
+            created_at,
+            ROW_NUMBER() OVER (ORDER BY score DESC, created_at ASC) AS overall_rank
           FROM best_scores
           WHERE per_user_rank = 1
         )
         SELECT
           overall_rank AS rank,
           score,
-          evaluated_at AS evaluatedAt
+          created_at AS createdAt
         FROM ranked
         WHERE user_id = ?
         LIMIT 1
       `,
     )
     .get(projectNumber, selectedYear, userId) as
-    | { rank: number; score: number; evaluatedAt: string }
+    | { rank: number; score: number; createdAt: string }
     | undefined;
 
   return row ?? null;

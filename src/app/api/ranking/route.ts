@@ -13,7 +13,7 @@ type RankingRow = {
   publicId: string;
   projectNumber: number;
   score: number;
-  evaluatedAt: string;
+  createdAt: string;
   position: number;
 };
 
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
       : null;
 
   const myBestScore = myRankRow
-    ? { score: myRankRow.score, evaluatedAt: myRankRow.evaluatedAt }
+    ? { score: myRankRow.score, createdAt: myRankRow.createdAt }
     : null;
   const myRank = myRankRow?.rank ?? null;
 

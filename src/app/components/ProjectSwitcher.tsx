@@ -12,13 +12,23 @@ type ProjectSwitcherProps = {
   activeProject: number;
   selectedYear: number;
   basePath?: string;
+  includeYearParam?: boolean;
 };
 
-export function ProjectSwitcher({ projects, activeProject, selectedYear, basePath = "/" }: ProjectSwitcherProps) {
+export function ProjectSwitcher({
+  projects,
+  activeProject,
+  selectedYear,
+  basePath = "/",
+  includeYearParam = true,
+}: ProjectSwitcherProps) {
   return (
     <div className="flex items-center justify-between gap-2">
       {projects.map((project) => {
-        const params = new URLSearchParams({ project: String(project.number), year: String(selectedYear) });
+        const params = new URLSearchParams({ project: String(project.number) });
+        if (includeYearParam) {
+          params.set("year", String(selectedYear));
+        }
         const href = `${basePath}?${params.toString()}`;
         const isActive = project.number === activeProject;
 

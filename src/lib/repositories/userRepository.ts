@@ -47,7 +47,7 @@ export function findAllUsers(): UserRecord[] {
         SELECT
           ${baseUserProjection}
         FROM users
-        ORDER BY created_at ASC
+        ORDER BY id DESC
       `,
     )
     .all() as UserRecord[];
