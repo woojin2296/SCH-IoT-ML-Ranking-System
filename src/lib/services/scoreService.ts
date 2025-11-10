@@ -1,38 +1,20 @@
 import {
-  deleteScoreById,
   deleteScoreByUser,
-  findScoreSummaryById,
   findScoreSummaryByIdForUser,
   findRankingRowForUser,
   findScoreFileMetaById,
   insertScore,
-  listAdminRankingRows,
   listDistinctUserYears,
   listRankingRows,
   listScoresByUser,
-  listScoresWithUserMeta,
-  type ScoreRow,
-  type ScoreSummaryRow,
-  type ScoreFileMetaRow,
-  type ScoreWithUserRow,
-  type RankingRow,
-  type UserYearRow,
 } from "@/lib/repositories/scoreRepository";
-
-export type AdminScore = {
-  id: number;
-  userId: number;
-  userPublicId: string;
-  studentNumber: string;
-  name: string | null;
-  projectNumber: number;
-  score: number;
-  evaluatedAt: string;
-  fileName: string | null;
-  fileSize: number | null;
-  hasFile: boolean;
-  userYear: number;
-};
+import type {
+  RankingRow,
+  ScoreFileMetaRow,
+  ScoreRow,
+  ScoreSummaryRow,
+  UserYearRow,
+} from "@/lib/type/Score";
 
 export type UserScore = {
   id: number;
@@ -65,35 +47,6 @@ export type ScoreFileMeta = {
 
 export type RankingRecord = RankingRow;
 
-export type AdminRankingRecord = {
-  id: number;
-  position: number;
-  studentNumber: string;
-  name: string | null;
-  score: number;
-  evaluatedAt: string;
-  fileName: string | null;
-  fileSize: number | null;
-  hasFile: boolean;
-};
-
-export function getAdminScores(): AdminScore[] {
-  return listScoresWithUserMeta().map((row: ScoreWithUserRow) => ({
-    id: row.id,
-    userId: row.userId,
-    userPublicId: row.userPublicId,
-    studentNumber: row.studentNumber,
-    name: row.name,
-    projectNumber: row.projectNumber,
-    score: row.score,
-    evaluatedAt: row.evaluatedAt,
-    fileName: row.fileName,
-    fileSize: row.fileSize,
-    hasFile: Boolean(row.hasFile),
-    userYear: row.userYear,
-  }));
-}
-
 export function getScoresForUser(
   userId: number,
   projectNumber?: number | null,
@@ -124,19 +77,11 @@ export function createScore(input: {
   return insertScore(input);
 }
 
-export function getScoreSummary(id: number): ScoreSummary | null {
-  return castSummary(findScoreSummaryById(id));
-}
-
 export function getScoreSummaryForUser(
   id: number,
   userId: number,
 ): ScoreSummary | null {
   return castSummary(findScoreSummaryByIdForUser(id, userId));
-}
-
-export function removeScore(id: number): boolean {
-  return deleteScoreById(id) > 0;
 }
 
 export function removeScoreForUser(id: number, userId: number): boolean {
@@ -167,24 +112,6 @@ export function getRankingRecords(
   selectedYear: number,
 ): RankingRecord[] {
   return listRankingRows(projectNumber, selectedYear);
-}
-
-export function getAdminRankingRecords(
-  projectNumber: number,
-  fromIso: string,
-  toIso: string,
-): AdminRankingRecord[] {
-  return listAdminRankingRows(projectNumber, fromIso, toIso).map((row) => ({
-    id: row.id,
-    position: row.position,
-    studentNumber: row.studentNumber,
-    name: row.name,
-    score: row.score,
-    evaluatedAt: row.evaluatedAt,
-    fileName: row.fileName,
-    fileSize: row.fileSize,
-    hasFile: Boolean(row.hasFile),
-  }));
 }
 
 export function getRankingSummaryForUser(

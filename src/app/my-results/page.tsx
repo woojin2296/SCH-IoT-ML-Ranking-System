@@ -99,13 +99,7 @@ export default async function MyResultsPage({
     return (
       <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10">
         <AppHero />
-        <AppNoticesList
-          items={
-            notices.length
-              ? notices.map((item) => item.message)
-              : [`${displayName}님, 현재 개인 제출 기록을 불러올 수 없습니다. 잠시 후 다시 시도해주세요.`]
-          }
-        />
+        <AppNoticesList />
         <div className="mx-auto w-full max-w-3xl rounded-lg border border-neutral-200 bg-white px-6 py-4 text-center text-sm text-neutral-600 shadow-sm">
           데이터 로딩 중 오류가 발생했습니다. 네트워크 상태를 확인하거나 문제가 지속될 경우 관리자에게 문의해주세요.
         </div>
@@ -124,13 +118,7 @@ export default async function MyResultsPage({
   return (
     <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10 items-center">
       <AppHero />
-      <AppNoticesList
-        items={
-          notices.length
-            ? notices.map((item) => item.message)
-            : [`${displayName}님, 현 시스템은 SCH 머신러닝 미니 프로젝트의 랭킹 확인을 위한 플랫폼입니다.`]
-        }
-      />
+      <AppNoticesList />
       <header className="mx-auto flex w-full max-w-3xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">{displayName}님의 제출 결과</h1>
@@ -153,7 +141,7 @@ export default async function MyResultsPage({
           </Link>
           {isAdmin ? (
             <Link
-              href="/admin"
+              href="/admin/users"
               className="inline-flex items-center justify-center rounded-md bg-yellow-400 px-4 py-2 text-sm font-medium text-neutral-900 shadow transition hover:bg-yellow-500"
             >
               관리자 페이지

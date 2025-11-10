@@ -103,13 +103,7 @@ export default function SubmitResultForm() {
   return (
     <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10 items-center">
       <AppHero />
-      <AppNoticesList
-        items={
-          noticeMessages.length
-            ? noticeMessages
-            : ["현 시스템은 SCH 머신러닝 미니 프로젝트의 랭킹 확인을 위한 플랫폼입니다."]
-        }
-      />
+      <AppNoticesList />
       <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-4 text-center">
         <h2 className="text-xl font-bold">결과 제출</h2>
         {status === "success" ? (

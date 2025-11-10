@@ -4,7 +4,6 @@ import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 
 import { requireSessionUser } from "@/lib/auth-guard";
-import { logEvaluationChange } from "@/lib/services/evaluationLogService";
 import { ALLOWED_UPLOAD_EXTENSIONS, resolveWithinUploadRoot, resolveStoredFilePath } from "@/lib/uploads";
 import { createRequestLogger } from "@/lib/request-logger";
 import { getSeoulTimestamp } from "@/lib/time";
@@ -178,16 +177,6 @@ export async function POST(request: NextRequest) {
       evaluatedAt,
     });
 
-    logEvaluationChange({
-      actorUserId: sessionUser.id,
-      action: "create",
-      scoreId: insertedId,
-      targetUserId: sessionUser.id,
-      projectNumber,
-      score,
-      payload: { source: "self-submit" },
-    });
-
     logRequest(201, {
       projectNumber,
       score,
@@ -283,16 +272,6 @@ export async function DELETE(request: NextRequest) {
         console.error("Failed to delete attachment", unlinkError);
       }
     }
-
-    logEvaluationChange({
-      actorUserId: sessionUser.id,
-      action: "delete",
-      scoreId: existing.id,
-      targetUserId: existing.userId,
-      projectNumber: existing.projectNumber,
-      score: existing.score,
-      payload: { source: "self-delete" },
-    });
 
     logRequest(200, { action: "delete", scoreId: existing.id });
 

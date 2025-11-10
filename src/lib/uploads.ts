@@ -1,6 +1,6 @@
 import path from "path";
 
-export const UPLOAD_ROOT = path.join(process.cwd(), "uploads", "evaluation-scores");
+const UPLOAD_ROOT = path.join(process.cwd(), "uploads", "evaluation-scores");
 export const ALLOWED_UPLOAD_EXTENSIONS = new Set([".ipynb", ".py"]);
 
 export const resolveWithinUploadRoot = (relativePath: string) => {

@@ -75,23 +75,6 @@ CREATE TABLE IF NOT EXISTS request_logs (
 
 CREATE INDEX IF NOT EXISTS idx_request_logs_created_at ON request_logs(created_at);
 
-CREATE TABLE IF NOT EXISTS evaluation_logs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  actor_user_id INTEGER,
-  action TEXT NOT NULL CHECK(action IN ('create', 'delete')),
-  score_id INTEGER,
-  target_user_id INTEGER,
-  project_number INTEGER,
-  score REAL,
-  payload TEXT,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (actor_user_id) REFERENCES users(id) ON DELETE SET NULL,
-  FOREIGN KEY (target_user_id) REFERENCES users(id) ON DELETE SET NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_evaluation_logs_actor ON evaluation_logs(actor_user_id);
-CREATE INDEX IF NOT EXISTS idx_evaluation_logs_target ON evaluation_logs(target_user_id);
-
 CREATE TABLE IF NOT EXISTS notices (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   message TEXT NOT NULL,
