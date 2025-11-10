@@ -10,7 +10,6 @@ import {
   getUserBySessionToken,
 } from "@/lib/services/sessionService";
 import { getBaseUrl } from "@/lib/url";
-import { getActiveNotices } from "@/lib/services/noticeService";
 
 import MyResultsTable from "./my-results-table";
 import AppNavigationClient from "@/components/AppNavigationClient";
@@ -83,10 +82,6 @@ export default async function MyResultsPage({
     data = (await response.json()) as MyResultsResponse;
   } catch (error) {
     console.error("Failed to fetch my results", error);
-    const displayName = sessionUser.name?.trim()?.length
-      ? sessionUser.name
-      : `참가자 ${sessionUser.publicId}`;
-    const notices = getActiveNotices();
     return (
       <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10">
         <AppHero />
@@ -105,7 +100,6 @@ export default async function MyResultsPage({
     ? sessionUser.name
     : `참가자 ${sessionUser.publicId}`;
   const isAdmin = sessionUser.role === "admin";
-  const notices = getActiveNotices();
 
   return (
     <div className="min-h-svh flex flex-col gap-4 p-6 md:p-10 items-center">

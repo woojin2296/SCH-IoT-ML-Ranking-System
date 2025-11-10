@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import path from "path";
 import { randomUUID } from "crypto";
 import bcrypt from "bcryptjs";

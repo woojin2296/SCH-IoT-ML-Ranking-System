@@ -11,6 +11,10 @@ type Notice = {
   updatedAt: string;
 };
 
+type NoticeSavePayload =
+  | { message: string; isActive: boolean }
+  | { id: number; message: string; isActive: boolean };
+
 export default function NoticeRow({ notice, isNew }: { notice: Notice; isNew?: boolean }) {
   const [message, setMessage] = useState(notice.message);
   const [isActive, setIsActive] = useState<boolean>(notice.isActive);
@@ -21,7 +25,7 @@ export default function NoticeRow({ notice, isNew }: { notice: Notice; isNew?: b
     setSaving(true);
     setError(null);
     try {
-      const payload: any = isNew
+      const payload: NoticeSavePayload = isNew
         ? { message, isActive }
         : { id: notice.id, message, isActive };
       const method = isNew ? "POST" : "PATCH";
@@ -104,4 +108,3 @@ export default function NoticeRow({ notice, isNew }: { notice: Notice; isNew?: b
     </tr>
   );
 }
-

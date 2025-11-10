@@ -2,23 +2,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/services/sessionService";
-import { getDistinctUserYears } from "@/lib/services/scoreService";
-import { projects } from "@/lib/projects";
 import AppHero from "@/components/AppHero";
 import { AppNoticesList } from "@/components/AppNoticesList";
 import AppNavigationClient from "@/components/AppNavigationClient";
 
-type PastSearchParams = {
-  project?: string | string[];
-  year?: string | string[];
-};
-
-function pickSingle(value?: string | string[]): string | undefined {
-  if (!value) return undefined;
-  return Array.isArray(value) ? value[0] : value;
-}
-
-export default async function PastRankingsPage({ searchParams }: { searchParams: Promise<PastSearchParams> }) {
+export default async function PastRankingsPage() {
   cleanupExpiredSessions();
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session_token")?.value;

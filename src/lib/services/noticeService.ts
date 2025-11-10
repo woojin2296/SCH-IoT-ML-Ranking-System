@@ -34,6 +34,7 @@ export function getActiveNoticeStrings(): string[] {
     }
     return records.map((r) => r.message);
   } catch (error) {
+    console.error("Failed to fetch active notice strings", error);
     return ["오류로 인해 공지사항을 불러올 수 없습니다."];
   }
 }

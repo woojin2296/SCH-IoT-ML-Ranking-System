@@ -34,8 +34,13 @@ export default function StudentNumberStepForm({
       setStudentNumber(limited);
       setError(null);
     },
-    [setStudentNumber]
+    [setStudentNumber, setError],
   );
+
+  type AuthCheckResponse = {
+    error?: string;
+    exists?: boolean;
+  };
 
   const handleSubmit = useCallback(
     async (event: React.FormEvent<HTMLFormElement>) => {
@@ -64,25 +69,25 @@ export default function StudentNumberStepForm({
           body: JSON.stringify({ studentNumber }),
         });
 
-        const data = (await response.json().catch(() => ({}))) as { error?: string } | { exists: boolean };
+        const data = (await response.json().catch(() => ({}))) as AuthCheckResponse;
 
         if (!response.ok) {
-          setError(
-            (data as any)?.error ?? "사용자 조회 중 오류가 발생했습니다."
-          );
+          setError(data.error ?? "사용자 조회 중 오류가 발생했습니다.");
           return;
         }
 
-        if ((data as any).exists) setStep("login");
-        else setStep("register");
-
+        if (data.exists) {
+          setStep("login");
+        } else {
+          setStep("register");
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
       } finally {
         setIsLoading(false);
       }
     },
-    [setStep, studentNumber]
+    [isLoading, setStep, studentNumber],
   );
 
   return (

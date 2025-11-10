@@ -183,6 +183,7 @@ export async function POST(request: NextRequest) {
       fileName: originalFileName,
       fileSize: file.size,
       createdAt,
+      id: insertedId,
     });
 
     return NextResponse.json(
