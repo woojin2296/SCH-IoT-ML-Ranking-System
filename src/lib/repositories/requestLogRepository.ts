@@ -27,51 +27,81 @@ export function insertRequestLog(entry: CreateRequestLogInput) {
 }
 
 // Read
-export function listRequestLogs(options?: { limit?: number; beforeId?: number }) {
+export function listRequestLogsPaginated(params: {
+  limit: number;
+  offset: number;
+  search?: string | null;
+}): RequestLogRecord[] {
   const db = getDb();
-  const limit = options?.limit ?? 100;
-  const beforeId = options?.beforeId ?? null;
+  const normalizedSearch = params.search?.trim();
+  const searchTerm = normalizedSearch ? `%${normalizedSearch}%` : null;
 
-  const query = beforeId
+  const whereClause = searchTerm
     ? `
-        SELECT
-          id,
-          source,
-          path,
-          method,
-          status,
-          metadata,
-          ip_address AS ipAddress,
-          created_at AS createdAt
-        FROM request_logs
-        WHERE id < ?
-        ORDER BY id DESC
-        LIMIT ?
+        WHERE
+          source LIKE ?
+          OR path LIKE ?
+          OR method LIKE ?
+          OR CAST(status AS TEXT) LIKE ?
+          OR COALESCE(ip_address, '') LIKE ?
+          OR COALESCE(metadata, '') LIKE ?
       `
-    : `
-        SELECT
-          id,
-          source,
-          path,
-          method,
-          status,
-          metadata,
-          ip_address AS ipAddress,
-          created_at AS createdAt
-        FROM request_logs
-        ORDER BY id DESC
-        LIMIT ?
-      `;
+    : "";
 
-  const logs = beforeId
-    ? (db.prepare(query).all(beforeId, limit) as RequestLogRecord[])
-    : (db.prepare(query).all(limit) as RequestLogRecord[]);
+  const query = `
+    SELECT
+      id,
+      source,
+      path,
+      method,
+      status,
+      metadata,
+      ip_address AS ipAddress,
+      created_at AS createdAt
+    FROM request_logs
+    ${whereClause}
+    ORDER BY created_at DESC, id DESC
+    LIMIT ?
+    OFFSET ?
+  `;
 
-  const totalCount = beforeId
-    ? undefined
-    : (db.prepare("SELECT COUNT(*) AS total FROM request_logs").get() as { total: number }).total;
+  const statement = db.prepare(query);
 
-  const hasMore = logs.length === limit;
+  const args = searchTerm
+    ? [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, params.limit, params.offset]
+    : [params.limit, params.offset];
 
-  return { logs, totalCount, hasMore };
+  return statement.all(...args) as RequestLogRecord[];
+}
+
+export function countRequestLogs(search?: string | null): number {
+  const db = getDb();
+  const normalizedSearch = search?.trim();
+  const searchTerm = normalizedSearch ? `%${normalizedSearch}%` : null;
+
+  const whereClause = searchTerm
+    ? `
+        WHERE
+          source LIKE ?
+          OR path LIKE ?
+          OR method LIKE ?
+          OR CAST(status AS TEXT) LIKE ?
+          OR COALESCE(ip_address, '') LIKE ?
+          OR COALESCE(metadata, '') LIKE ?
+      `
+    : "";
+
+  const statement = db.prepare(
+    `
+      SELECT COUNT(*) AS total
+      FROM request_logs
+      ${whereClause}
+    `,
+  );
+
+  const row = searchTerm
+    ? (statement.get(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm, searchTerm) as { total: number } | undefined)
+    : (statement.get() as { total: number } | undefined);
+
+  return row?.total ?? 0;
 }

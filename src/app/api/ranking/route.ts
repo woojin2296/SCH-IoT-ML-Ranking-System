@@ -6,39 +6,33 @@ import {
   getUserBySessionToken,
 } from "@/lib/services/sessionService";
 import { getDistinctUserYears, getRankingRecords, getRankingSummaryForUser } from "@/lib/services/scoreService";
-
-type RankingRow = {
-  id: number;
-  userId: number;
-  publicId: string;
-  projectNumber: number;
-  score: number;
-  createdAt: string;
-  position: number;
-};
+import { createRequestLogger } from "@/lib/request-logger";
 
 export async function GET(request: NextRequest) {
+  const anonymousLogger = createRequestLogger(request, "/api/ranking", request.method);
   cleanupExpiredSessions();
 
-  // 쿠키 설정
   const cookieStore = await cookies();
 
-  // 세션 토큰 검증
   const sessionToken = cookieStore.get("session_token")?.value;
   if (!sessionToken) {
+    anonymousLogger(401, { reason: "missing_session" });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 세션 유저 검증
   const sessionUser = getUserBySessionToken(sessionToken);
   if (!sessionUser) {
+    anonymousLogger(401, { reason: "invalid_session" });
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const logRequest = createRequestLogger(request, "/api/ranking", request.method, sessionUser.id);
 
   const projectParam = request.nextUrl.searchParams.get("project");
   const projectNumber = projectParam ? Number.parseInt(projectParam, 10) : 1;
 
   if (!Number.isInteger(projectNumber) || projectNumber < 1 || projectNumber > 4) {
+    logRequest(400, { reason: "invalid_project", projectParam });
     return NextResponse.json(
       { error: "유효하지 않은 프로젝트 번호입니다." },
       { status: 400 },
@@ -70,6 +64,12 @@ export async function GET(request: NextRequest) {
     ? { score: myRankRow.score, createdAt: myRankRow.createdAt }
     : null;
   const myRank = myRankRow?.rank ?? null;
+
+  logRequest(200, {
+    count: rankings.length,
+    projectNumber,
+    selectedYear,
+  });
 
   return NextResponse.json({
     rankings,
