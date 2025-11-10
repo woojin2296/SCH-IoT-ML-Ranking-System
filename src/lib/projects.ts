@@ -4,3 +4,8 @@ export const projects = [
   { number: 3, label: "프로젝트 3" },
   { number: 4, label: "프로젝트 4" },
 ];
+
+export const projectFilterOptions = [
+  { number: null as null, label: "전체" },
+  ...projects,
+];

@@ -8,7 +8,6 @@ type RankingSummaryProps = {
 };
 
 export function RankingSummary({ selectedYear, myBestScore, myRank, className }: RankingSummaryProps) {
-  const selectedYearLabel = `${selectedYear}년`;
   if (!myBestScore) {
     return (
       <div
@@ -17,7 +16,7 @@ export function RankingSummary({ selectedYear, myBestScore, myRank, className }:
           className,
         )}
       >
-        선택한 {selectedYearLabel}에는 아직 등록된 점수가 없습니다. 점수를 제출하고 기록을 만들어 보세요!
+        {selectedYear}년에는 등록된 점수가 없습니다. 점수를 제출하고 기록을 만들어 보세요!
       </div>
     );
   }
@@ -29,7 +28,7 @@ export function RankingSummary({ selectedYear, myBestScore, myRank, className }:
         className,
       )}
     >
-      선택한 {selectedYearLabel} 기준 나의 최고 점수는 {myBestScore.score.toFixed(4)}점이며{" "}
+      {selectedYear}년 기준 나의 최고 점수는 {myBestScore.score.toFixed(4)}점이며{" "}
       {typeof myRank === "number" ? `현재 ${myRank}위입니다.` : "현재 순위를 확인할 수 없습니다."}
     </div>
   );

@@ -5,6 +5,7 @@ import {
   createUser,
   findUserById,
   findUserByStudentNumber as findUserByStudentNumberRepo,
+  findAllUsers,
   isEmailTaken,
   isPublicIdTaken,
 } from "@/lib/repositories/userRepository";
@@ -119,6 +120,10 @@ async function registerUser(payload: RegisterUserPayload): Promise<RegisterUserR
 
 export function findUserByStudentNumber(studentNumber: string): UserRecord | null {
   return findUserByStudentNumberRepo(studentNumber);
+}
+
+export function listUsersOrderedByCreation(): UserRecord[] {
+  return findAllUsers();
 }
 
 // Service-level user listing for consumers (admin pages etc.)
