@@ -1,17 +1,22 @@
 import {
+  countAdminScoreSubmissions,
+  deleteScoreById,
   deleteScoreByUser,
   findScoreSummaryByIdForUser,
   findRankingRowForUser,
   findScoreFileMetaById,
   insertScore,
+  listAdminRankingRows,
+  listAdminScoreSubmissions,
   listDistinctUserYears,
   listRankingRows,
   listScoresByUser,
 } from "@/lib/repositories/scoreRepository";
 import type {
+  AdminRankingRow,
   RankingRow,
-  ScoreFileMetaRow,
   ScoreRow,
+  ScoreSubmissionRow,
   ScoreSummaryRow,
   UserYearRow,
 } from "@/lib/type/Score";
@@ -46,6 +51,22 @@ export type ScoreFileMeta = {
 };
 
 export type RankingRecord = RankingRow;
+export type AdminRankingRecord = AdminRankingRow;
+export type ScoreSubmissionRecord = {
+  id: number;
+  userId: number;
+  studentNumber: string;
+  name: string | null;
+  email: string;
+  semester: number;
+  projectNumber: number;
+  score: number;
+  createdAt: string;
+  fileName: string | null;
+  fileType: string | null;
+  fileSize: number | null;
+  hasFile: boolean;
+};
 
 export function getScoresForUser(
   userId: number,
@@ -88,6 +109,10 @@ export function removeScoreForUser(id: number, userId: number): boolean {
   return deleteScoreByUser(id, userId) > 0;
 }
 
+export function removeScoreById(id: number): boolean {
+  return deleteScoreById(id) > 0;
+}
+
 export function getScoreFileMeta(id: number): ScoreFileMeta | null {
   const row = findScoreFileMetaById(id);
   if (!row) {
@@ -114,12 +139,46 @@ export function getRankingRecords(
   return listRankingRows(projectNumber, selectedYear);
 }
 
+export function getAdminRankingRecords(
+  projectNumber: number,
+  selectedYear: number,
+): AdminRankingRecord[] {
+  return listAdminRankingRows(projectNumber, selectedYear);
+}
+
 export function getRankingSummaryForUser(
   projectNumber: number,
   selectedYear: number,
   userId: number,
 ): { rank: number; score: number; createdAt: string } | null {
   return findRankingRowForUser(projectNumber, selectedYear, userId);
+}
+
+export function getScoreSubmissionsForAdmin(params: {
+  studentNumber?: string;
+  limit: number;
+  offset: number;
+}): ScoreSubmissionRecord[] {
+  const rows = listAdminScoreSubmissions(params);
+  return rows.map((row: ScoreSubmissionRow) => ({
+    id: row.id,
+    userId: row.userId,
+    studentNumber: row.studentNumber,
+    name: row.name,
+    email: row.email,
+    semester: row.semester,
+    projectNumber: row.projectNumber,
+    score: row.score,
+    createdAt: row.createdAt,
+    fileName: row.fileName,
+    fileType: row.fileType,
+    fileSize: row.fileSize,
+    hasFile: Boolean(row.filePath),
+  }));
+}
+
+export function countScoreSubmissionsForAdmin(studentNumber?: string): number {
+  return countAdminScoreSubmissions(studentNumber);
 }
 
 function castSummary(row: ScoreSummaryRow | null): ScoreSummary | null {

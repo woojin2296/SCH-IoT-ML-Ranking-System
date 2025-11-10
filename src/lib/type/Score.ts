@@ -37,6 +37,29 @@ export type RankingRow = {
   position: number;
 };
 
+export type AdminRankingRow = RankingRow & {
+  name: string | null;
+  email: string;
+  studentNumber: string;
+  semester: number;
+};
+
+export type ScoreSubmissionRow = {
+  id: number;
+  userId: number;
+  studentNumber: string;
+  name: string | null;
+  email: string;
+  semester: number;
+  projectNumber: number;
+  score: number;
+  createdAt: string;
+  filePath: string | null;
+  fileName: string | null;
+  fileType: string | null;
+  fileSize: number | null;
+};
+
 export type UserYearRow = {
   year: number;
 };
