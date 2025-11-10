@@ -93,7 +93,6 @@ export default function LoginStepForm({
           onChange={handleStudentNumberChange}
           disabled={isLoading}
           maxLength={8}
-          required
         />
       </div>
       <div className="grid gap-6">
@@ -106,7 +105,6 @@ export default function LoginStepForm({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             ref={passwordRef}
-            required
           />
         </div>
         <Button type="submit" className="w-full bg-[#265392]" disabled={isLoading}>

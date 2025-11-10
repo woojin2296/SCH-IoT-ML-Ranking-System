@@ -66,7 +66,7 @@ export default async function Home({
 
   let data: RankingsResponse | null = null;
   try {
-    const response = await fetch(`${baseUrl}/api/rankings?${queryParams.toString()}`, {
+    const response = await fetch(`${baseUrl}/api/auth/rankings?${queryParams.toString()}`, {
       headers: {
         Cookie: cookieHeader,
       },

@@ -21,6 +21,7 @@ export default function RegisterStepForm({ studentNumber, onSuccess }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
+
   useEffect(() => {
     registerNameRef.current?.focus();
   }, []);
@@ -133,7 +134,6 @@ export default function RegisterStepForm({ studentNumber, onSuccess }: Props) {
           onCompositionStart={() => setIsComposingName(true)}
           onCompositionEnd={onCompositionEnd}
           ref={registerNameRef}
-          maxLength={10}
         />
       </div>
       <div className="grid gap-2">

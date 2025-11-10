@@ -38,6 +38,16 @@ export function getActiveNoticeStrings(): string[] {
   }
 }
 
+export function getActiveNotices(): Notice[] {
+  try {
+    const records = findAllActiveNotices();
+    return records.map(mapNoticeRecord);
+  } catch (error) {
+    console.error("Failed to fetch active notices", error);
+    return [];
+  }
+}
+
 export function getAllNotices(): Notice[] {
   try {
     return findAllNotices().map(mapNoticeRecord);
