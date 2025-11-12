@@ -1,54 +1,37 @@
-# syntax=docker/dockerfile:1.6
-
-ARG NODE_VERSION=20
-
-# ── 0단계: 공통 베이스 ──
-FROM node:${NODE_VERSION}-alpine AS base
+# ─────────────── 1단계: 빌드 ───────────────
+FROM node:20-alpine AS builder
 WORKDIR /app
-RUN apk add --no-cache libc6-compat python3 make g++
 
-# ── 1단계: 의존성 설치 ──
-FROM base AS deps
-COPY package*.json ./
-RUN npm ci \
-  && npm rebuild better-sqlite3 --build-from-source
+# 기본 빌드 도구 설치 (better-sqlite3는 C++로 컴파일됨)
+RUN apk add --no-cache python3 make g++
 
-# ── 2단계: 개발 환경 ──
-FROM base AS dev
-ENV NODE_ENV=development
 COPY package*.json ./
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-CMD ["npm", "run", "dev"]
+RUN npm install --ignore-scripts
+RUN npm rebuild better-sqlite3 --build-from-source
+RUN npm rebuild sqlite3 --build-from-source
 
-# ── 3단계: 빌드 ──
-FROM base AS builder
-ARG APP_ENV=production
-ENV NODE_ENV=$APP_ENV
-COPY package*.json ./
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# ── 4단계: 런타임(standalone) ──
-FROM node:${NODE_VERSION}-alpine AS runner
+# ─────────────── 2단계: 런타임 ───────────────
+FROM node:20-alpine
 WORKDIR /app
-ENV NODE_ENV=production
-ENV PORT=3000
 
-# next standalone 출력물 복사
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+RUN apk add --no-cache sqlite
+RUN mkdir -p /app/db /app/.next/cache/images && chown -R node:node /app
 
-# ✅ 캐시/DB용 디렉토리 권한 확보
-RUN addgroup -g 1001 nodejs \
-    && adduser -S nextjs -u 1001 -G nodejs \
-    && mkdir -p /app/.next/cache \
-    && chown -R nextjs:nodejs /app
+COPY --from=builder /app ./
 
-# 권한 낮추기
-USER nextjs
+USER node
+
+ENTRYPOINT ["/bin/sh", "-c", "\
+  if [ ! -f /app/db/app.db ]; then \
+    echo '📀 Initializing SQLite database...'; \
+    sqlite3 /app/db/app.db < /app/schema.sql; \
+  else \
+    echo '✅ Existing DB found, skipping initialization.'; \
+  fi; \
+  npm run start \
+"]
 
 EXPOSE 3000
-CMD ["node", "server.js"]

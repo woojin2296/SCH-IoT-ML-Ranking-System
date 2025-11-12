@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { projects } from "@/lib/projects";
 import { Alert } from "@/components/ui/alert";
 
 type SubmitState = "idle" | "submitting" | "success" | "error";
+const ALLOWED_EXTENSIONS = new Set([".ipynb", ".py"]);
 
 export default function SubmitResultForm() {
   const router = useRouter();
@@ -29,6 +30,33 @@ export default function SubmitResultForm() {
     }
     return undefined;
   }, [status, router]);
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextFile = event.target.files?.[0] ?? null;
+    if (!nextFile) {
+      setFile(null);
+      setError(null);
+      return;
+    }
+
+    if (nextFile.size === 0) {
+      setFile(null);
+      setError("빈 파일은 업로드할 수 없습니다.");
+      return;
+    }
+
+    const extension = nextFile.name.includes(".")
+      ? nextFile.name.slice(nextFile.name.lastIndexOf(".")).toLowerCase()
+      : "";
+    if (!ALLOWED_EXTENSIONS.has(extension)) {
+      setFile(null);
+      setError("허용된 확장자(.ipynb, .py)만 업로드할 수 있습니다.");
+      return;
+    }
+
+    setFile(nextFile);
+    setError(null);
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -130,9 +158,7 @@ export default function SubmitResultForm() {
             <Input
               id="attachment"
               type="file"
-              onChange={(event) => {
-                setFile(event.target.files?.[0] ?? null);
-              }}
+              onChange={handleFileChange}
               required
             />
             <p className="text-xs text-neutral-500">파일은 10MB 이하로 업로드해주세요.</p>
@@ -142,7 +168,7 @@ export default function SubmitResultForm() {
             <Button
               type="submit"
               className="flex-1 bg-[#265392]"
-              disabled={status === "submitting" || !!error}
+              disabled={status === "submitting"}
             >
               {status === "submitting" ? "제출 중..." : "결과 제출"}
             </Button>

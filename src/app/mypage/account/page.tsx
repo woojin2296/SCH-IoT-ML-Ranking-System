@@ -71,6 +71,9 @@ export default async function AccountPage() {
           </button>
         </form>
       </div>
+      <p className="mt-6 text-xs text-neutral-500 text-center w-full max-w-2xl">
+        문제 발생 시 <a href="mailto:woojin2296@kakao.com" className="font-medium underline">woojin2296@kakao.com</a> 으로 연락해주세요.
+      </p>
     </div>
   );
 }

@@ -9,6 +9,24 @@ import {
 import { logUserRequest, resolveRequestSource } from "@/lib/services/requestLogService";
 import { getRequestIp } from "@/lib/request";
 
+function shouldUseSecureCookies() {
+  const flag = process.env.COOKIE_SECURE;
+  if (typeof flag === "string") {
+    return flag.toLowerCase() !== "false" && flag !== "0";
+  }
+  return process.env.NODE_ENV === "production";
+}
+
+function resolveRedirectUrl(request: NextRequest, path: string) {
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  if (forwardedHost) {
+    const origin = `${forwardedProto ?? "https"}://${forwardedHost}`;
+    return new URL(path, origin);
+  }
+  return new URL(path, request.url);
+}
+
 // POST /api/auth/logout
 // - Requires valid session cookie if present; silently succeeds when missing.
 // - Cleans up session record, clears cookie, and redirects to /login with 303.
@@ -24,7 +42,7 @@ export async function POST(request: NextRequest) {
     deleteSession(sessionToken);
   }
 
-  const response = NextResponse.redirect(new URL("/login", request.url), {
+  const response = NextResponse.redirect(resolveRedirectUrl(request, "/login"), {
     status: 303,
   });
 
@@ -33,6 +51,9 @@ export async function POST(request: NextRequest) {
     value: "",
     maxAge: 0,
     path: "/",
+    httpOnly: true,
+    secure: shouldUseSecureCookies(),
+    sameSite: "lax",
   });
 
   logUserRequest({
