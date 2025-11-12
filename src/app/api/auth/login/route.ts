@@ -92,7 +92,6 @@ export async function POST(request: NextRequest) {
       name: user.name,
       publicId: user.publicId,
       role: user.role,
-      semester: user.semester,
       lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,

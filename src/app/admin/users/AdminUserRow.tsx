@@ -10,12 +10,10 @@ type User = {
   email: string;
   name: string | null;
   role: string;
-  semester: number;
 };
 
 export default function AdminUserRow({ user }: { user: User }) {
   const [role, setRole] = useState(user.role);
-  const [semester, setSemester] = useState<number>(user.semester);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +30,6 @@ export default function AdminUserRow({ user }: { user: User }) {
           name: user.name ?? "",
           studentNumber: user.studentNumber,
           role,
-          semester,
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -64,15 +61,6 @@ export default function AdminUserRow({ user }: { user: User }) {
           <option value="admin">admin</option>
         </select>
       </td>
-      <td className="px-4 py-3">
-        <input
-          type="number"
-          className="w-24 rounded-md border border-neutral-200 px-2 py-1 text-sm"
-          value={semester}
-          onChange={(e) => setSemester(Number.parseInt(e.target.value, 10))}
-          disabled={saving}
-        />
-      </td>
       <td className="px-4 py-3 flex items-center gap-2">
         <Button type="button" size="sm" onClick={onSave} disabled={saving} className="bg-[#265392]">
           {saving ? "저장 중..." : "저장"}
@@ -82,4 +70,3 @@ export default function AdminUserRow({ user }: { user: User }) {
     </tr>
   );
 }
-

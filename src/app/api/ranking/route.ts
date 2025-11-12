@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-import {
-  cleanupExpiredSessions,
-  getUserBySessionToken,
-} from "@/lib/services/sessionService";
-import { getDistinctUserYears, getRankingRecords, getRankingSummaryForUser } from "@/lib/services/scoreService";
+import { cleanupExpiredSessions, getUserBySessionToken } from "@/lib/services/sessionService";
+import { getRankingRecords, getRankingSummaryForUser } from "@/lib/services/scoreService";
 import { createRequestLogger } from "@/lib/request-logger";
 
 export async function GET(request: NextRequest) {
@@ -39,44 +36,21 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const yearParam = request.nextUrl.searchParams.get("year");
-  const isValidYearParam = yearParam ? /^\d{4}$/.test(yearParam) : false;
-  const parsedYear = isValidYearParam ? Number.parseInt(yearParam!, 10) : undefined;
+  const rankings = getRankingRecords(projectNumber);
 
-  const distinctYears = getDistinctUserYears();
-  let selectedYear = isValidYearParam ? (parsedYear as number) : undefined;
-  if (typeof selectedYear !== "number") {
-    selectedYear = distinctYears[0] ?? new Date().getFullYear();
-  }
-
-  const yearSet = new Set(distinctYears);
-  yearSet.add(selectedYear);
-  const availableYears = Array.from(yearSet).sort((a, b) => b - a);
-
-  const rankings = getRankingRecords(projectNumber, selectedYear);
-
-  const myRankRow =
-    sessionUser.semester === selectedYear
-      ? getRankingSummaryForUser(projectNumber, selectedYear, sessionUser.id)
-      : null;
+  const myRankRow = getRankingSummaryForUser(projectNumber, sessionUser.id);
 
   const myBestScore = myRankRow
     ? { score: myRankRow.score, createdAt: myRankRow.createdAt }
     : null;
   const myRank = myRankRow?.rank ?? null;
 
-  logRequest(200, {
-    count: rankings.length,
-    projectNumber,
-    selectedYear,
-  });
+  logRequest(200, { count: rankings.length, projectNumber });
 
   return NextResponse.json({
     rankings,
     myBestScore,
     projectNumber,
-    selectedYear,
-    availableYears,
     myRank,
   });
 }

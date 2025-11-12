@@ -6,10 +6,9 @@ import type {
   ScoreRow,
   ScoreSubmissionRow,
   ScoreSummaryRow,
-  UserYearRow,
 } from "@/lib/type/Score";
 
-export function listRankingRows(projectNumber: number, selectedYear: number): RankingRow[] {
+export function listRankingRows(projectNumber: number): RankingRow[] {
   const db = getDb();
   return db
     .prepare(
@@ -29,12 +28,6 @@ export function listRankingRows(projectNumber: number, selectedYear: number): Ra
         FROM scores es
         INNER JOIN users u ON u.id = es.user_id
         WHERE es.project_number = ?
-          AND (
-            CASE
-              WHEN u.semester >= 100000 THEN CAST(u.semester / 100 AS INTEGER)
-              ELSE u.semester
-            END
-          ) = ?
         )
         SELECT
           id,
@@ -49,10 +42,10 @@ export function listRankingRows(projectNumber: number, selectedYear: number): Ra
         ORDER BY position ASC
       `,
     )
-    .all(projectNumber, selectedYear) as RankingRow[];
+    .all(projectNumber) as RankingRow[];
 }
 
-export function listAdminRankingRows(projectNumber: number, selectedYear: number): AdminRankingRow[] {
+export function listAdminRankingRows(projectNumber: number): AdminRankingRow[] {
   const db = getDb();
   return db
     .prepare(
@@ -68,7 +61,6 @@ export function listAdminRankingRows(projectNumber: number, selectedYear: number
             u.name,
             u.email,
             u.student_number,
-            u.semester,
             ROW_NUMBER() OVER (
               PARTITION BY es.user_id
               ORDER BY es.score DESC, es.created_at ASC
@@ -76,12 +68,6 @@ export function listAdminRankingRows(projectNumber: number, selectedYear: number
         FROM scores es
         INNER JOIN users u ON u.id = es.user_id
         WHERE es.project_number = ?
-          AND (
-            CASE
-              WHEN u.semester >= 100000 THEN CAST(u.semester / 100 AS INTEGER)
-              ELSE u.semester
-            END
-          ) = ?
         )
         SELECT
           id,
@@ -90,7 +76,6 @@ export function listAdminRankingRows(projectNumber: number, selectedYear: number
           name,
           email,
           student_number AS studentNumber,
-          semester,
           project_number AS projectNumber,
           score,
           created_at AS createdAt,
@@ -100,7 +85,7 @@ export function listAdminRankingRows(projectNumber: number, selectedYear: number
         ORDER BY position ASC
       `,
     )
-    .all(projectNumber, selectedYear) as AdminRankingRow[];
+    .all(projectNumber) as AdminRankingRow[];
 }
 
 export function listScoresByUser(userId: number, projectNumber?: number | null): ScoreRow[] {
@@ -221,7 +206,6 @@ export function listAdminScoreSubmissions(params: {
       u.student_number AS studentNumber,
       u.name,
       u.email,
-      u.semester,
       s.project_number AS projectNumber,
       s.score,
       s.created_at AS createdAt,
@@ -288,26 +272,8 @@ export function findScoreFileMetaById(id: number): ScoreFileMetaRow | null {
   return row ?? null;
 }
 
-export function listDistinctUserYears(): UserYearRow[] {
-  const db = getDb();
-  return db
-    .prepare(
-      `
-        SELECT DISTINCT
-          CASE
-            WHEN semester >= 100000 THEN CAST(semester / 100 AS INTEGER)
-            ELSE semester
-          END AS year
-        FROM users
-        ORDER BY year DESC
-      `,
-    )
-    .all() as UserYearRow[];
-}
-
 export function findRankingRowForUser(
   projectNumber: number,
-  selectedYear: number,
   userId: number,
 ): { rank: number; score: number; createdAt: string } | null {
   const db = getDb();
@@ -328,12 +294,6 @@ export function findRankingRowForUser(
           FROM scores es
           INNER JOIN users u ON u.id = es.user_id
           WHERE es.project_number = ?
-            AND (
-              CASE
-                WHEN u.semester >= 100000 THEN CAST(u.semester / 100 AS INTEGER)
-                ELSE u.semester
-              END
-            ) = ?
         ),
         ranked AS (
           SELECT
@@ -355,7 +315,7 @@ export function findRankingRowForUser(
         LIMIT 1
       `,
     )
-    .get(projectNumber, selectedYear, userId) as
+    .get(projectNumber, userId) as
     | { rank: number; score: number; createdAt: string }
     | undefined;
 

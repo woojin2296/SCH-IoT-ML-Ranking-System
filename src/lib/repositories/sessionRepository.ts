@@ -25,7 +25,6 @@ export function findActiveSessionUser(sessionToken: string): UserRecord | null {
           u.name,
           u.public_id AS publicId,
           u.role,
-          u.semester AS semester,
           u.last_login_at AS lastLoginAt,
           u.is_active AS isActive,
           u.created_at AS createdAt,
