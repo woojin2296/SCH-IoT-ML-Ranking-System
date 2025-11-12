@@ -15,7 +15,6 @@ type RankingRecord = {
   name: string | null;
   email: string;
   studentNumber: string;
-  semester: number;
 };
 
 export default function AdminRankingRow({ record }: { record: RankingRecord }) {
@@ -60,7 +59,6 @@ export default function AdminRankingRow({ record }: { record: RankingRecord }) {
       <td className="px-4 py-3">{record.name ?? "-"}</td>
       <td className="px-4 py-3">{record.email}</td>
       <td className="px-4 py-3">{record.publicId}</td>
-      <td className="px-4 py-3">{record.semester}</td>
       <td className="px-4 py-3 whitespace-nowrap">{formattedTimestamp}</td>
       <td className="px-4 py-3">
         <div className="flex flex-col gap-2">

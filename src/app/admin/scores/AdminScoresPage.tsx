@@ -78,7 +78,6 @@ export default function AdminScoresPage({
                 <th className="px-4 py-3">학번</th>
                 <th className="px-4 py-3">이름</th>
                 <th className="px-4 py-3">이메일</th>
-                <th className="px-4 py-3">년도</th>
                 <th className="px-4 py-3">첨부</th>
                 <th className="px-4 py-3">제출 일시</th>
                 <th className="px-4 py-3 text-center">관리</th>
@@ -87,7 +86,7 @@ export default function AdminScoresPage({
             <tbody className="divide-y divide-neutral-100 text-neutral-700">
               {records.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-6 text-center text-sm text-neutral-500">
+                  <td colSpan={9} className="px-4 py-6 text-center text-sm text-neutral-500">
                     조건에 해당하는 제출 기록이 없습니다.
                   </td>
                 </tr>

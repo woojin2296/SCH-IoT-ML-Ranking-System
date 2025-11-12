@@ -47,7 +47,6 @@ export default function AdminScoreRow({ record }: { record: ScoreSubmissionRecor
       <td className="px-4 py-3">{record.studentNumber}</td>
       <td className="px-4 py-3">{record.name ?? "-"}</td>
       <td className="px-4 py-3">{record.email}</td>
-      <td className="px-4 py-3">{record.semester}</td>
       <td className="px-4 py-3">{formatFileInfo(record)}</td>
       <td className="px-4 py-3 whitespace-nowrap">{formatTimestamp(record.createdAt)}</td>
       <td className="px-4 py-3">

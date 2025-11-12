@@ -81,7 +81,6 @@ async function registerUser(payload: RegisterUserPayload): Promise<RegisterUserR
   const passwordHash = await hashPassword(password);
 
   try {
-    const currentYear = new Date().getFullYear();
     const userId = createUser({
       studentNumber,
       email: emailRaw,
@@ -89,7 +88,6 @@ async function registerUser(payload: RegisterUserPayload): Promise<RegisterUserR
       name,
       publicId,
       role,
-      semester: currentYear,
     });
 
     const user = findUserById(userId);

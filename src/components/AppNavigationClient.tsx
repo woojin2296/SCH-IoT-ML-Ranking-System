@@ -1,19 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 export default function AppNavigationClient({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const year = searchParams.get("year");
 
   const base = "inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium transition";
   const active = "bg-[#265392] text-white shadow";
   const inactive = "bg-neutral-100 text-neutral-700 hover:bg-neutral-200";
 
-  const isCurrentActive = pathname === "/" && !year;
-  const isPastActive = pathname.startsWith("/rankings");
+  const isCurrentActive = pathname === "/";
   const isMyResultsActive = pathname.startsWith("/mypage/results");
   const isAccountActive = pathname.startsWith("/mypage/account");
   const isAdminActive = pathname.startsWith("/admin");
@@ -24,11 +21,6 @@ export default function AppNavigationClient({ isAdmin }: { isAdmin: boolean }) {
         <li>
           <Link href="/" className={`${base} ${isCurrentActive ? active : inactive}`}>
             현재 랭킹
-          </Link>
-        </li>
-        <li>
-          <Link href={`/rankings`} className={`${base} ${isPastActive ? active : inactive}`}>
-            전체 랭킹
           </Link>
         </li>
         <li>

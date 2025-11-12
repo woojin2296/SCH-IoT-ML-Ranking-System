@@ -6,7 +6,6 @@ const baseUserProjection = `
   student_number AS studentNumber,
   email,
   name,
-  semester AS semester,
   public_id AS publicId,
   role,
   last_login_at AS lastLoginAt,
@@ -21,8 +20,8 @@ export function createUser(input: UserCreateParams): number {
   const result = db
     .prepare(
       `
-        INSERT INTO users (student_number, email, password_hash, name, public_id, role, semester)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO users (student_number, email, password_hash, name, public_id, role)
+        VALUES (?, ?, ?, ?, ?, ?)
       `,
     )
     .run(
@@ -32,7 +31,6 @@ export function createUser(input: UserCreateParams): number {
       input.name,
       input.publicId,
       input.role,
-      input.semester,
     );
 
   return Number(result.lastInsertRowid);
@@ -134,7 +132,6 @@ export function updateUserById(input : UserUpdateParams) : boolean {
           email = COALESCE(?, email),
           name = COALESCE(?, name),
           role = COALESCE(?, role),
-          semester = COALESCE(?, semester),
           is_active = COALESCE(?, is_active),
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
@@ -145,7 +142,6 @@ export function updateUserById(input : UserUpdateParams) : boolean {
       input.email ?? null,
       input.name ?? null,
       input.role ?? null,
-      input.semester ?? null,
       input.isActive ?? null,
       input.id,
     );

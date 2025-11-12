@@ -10,9 +10,7 @@ type RankingsBoardProps = {
 };
 
 export function RankingsBoard({ sessionUserId, activeProject }: RankingsBoardProps) {
-  const selectedYear = new Date().getFullYear();
-
-  const rankingRecords = listRankingRows(activeProject, selectedYear);
+  const rankingRecords = listRankingRows(activeProject);
   const rankings: RankingTableRow[] = rankingRecords.map((row) => ({
     id: row.id,
     userId: row.userId,
@@ -22,25 +20,17 @@ export function RankingsBoard({ sessionUserId, activeProject }: RankingsBoardPro
     createdAt: row.createdAt,
   }));
 
-  const mySummary = findRankingRowForUser(activeProject, selectedYear, sessionUserId);
+  const mySummary = findRankingRowForUser(activeProject, sessionUserId);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <h2 className="text-lg font-semibold">
-          점수 랭킹 보드{" "}
-          <span className="text-sm font-normal text-neutral-500">
-            ({selectedYear}년)
-          </span>
+          점수 랭킹 보드
         </h2>
-        <ProjectSwitcher
-          projects={projects}
-          activeProject={activeProject}
-          selectedYear={selectedYear}
-          includeYearParam={false}
-        />
+        <ProjectSwitcher projects={projects} activeProject={activeProject} />
       </div>
-      <RankingSummary selectedYear={selectedYear} myBestScore={mySummary} />
+      <RankingSummary myBestScore={mySummary} />
       <RankingTable rankings={rankings} sessionUserId={sessionUserId} />
     </div>
   );

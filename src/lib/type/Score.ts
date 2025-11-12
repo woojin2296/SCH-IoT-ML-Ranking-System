@@ -41,7 +41,6 @@ export type AdminRankingRow = RankingRow & {
   name: string | null;
   email: string;
   studentNumber: string;
-  semester: number;
 };
 
 export type ScoreSubmissionRow = {
@@ -50,7 +49,6 @@ export type ScoreSubmissionRow = {
   studentNumber: string;
   name: string | null;
   email: string;
-  semester: number;
   projectNumber: number;
   score: number;
   createdAt: string;
@@ -58,8 +56,4 @@ export type ScoreSubmissionRow = {
   fileName: string | null;
   fileType: string | null;
   fileSize: number | null;
-};
-
-export type UserYearRow = {
-  year: number;
 };

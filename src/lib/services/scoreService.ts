@@ -8,7 +8,6 @@ import {
   insertScore,
   listAdminRankingRows,
   listAdminScoreSubmissions,
-  listDistinctUserYears,
   listRankingRows,
   listScoresByUser,
 } from "@/lib/repositories/scoreRepository";
@@ -18,7 +17,6 @@ import type {
   ScoreRow,
   ScoreSubmissionRow,
   ScoreSummaryRow,
-  UserYearRow,
 } from "@/lib/type/Score";
 
 export type UserScore = {
@@ -58,7 +56,6 @@ export type ScoreSubmissionRecord = {
   studentNumber: string;
   name: string | null;
   email: string;
-  semester: number;
   projectNumber: number;
   score: number;
   createdAt: string;
@@ -128,30 +125,23 @@ export function getScoreFileMeta(id: number): ScoreFileMeta | null {
   };
 }
 
-export function getDistinctUserYears(): number[] {
-  return listDistinctUserYears().map((row: UserYearRow) => row.year);
-}
-
 export function getRankingRecords(
   projectNumber: number,
-  selectedYear: number,
 ): RankingRecord[] {
-  return listRankingRows(projectNumber, selectedYear);
+  return listRankingRows(projectNumber);
 }
 
 export function getAdminRankingRecords(
   projectNumber: number,
-  selectedYear: number,
 ): AdminRankingRecord[] {
-  return listAdminRankingRows(projectNumber, selectedYear);
+  return listAdminRankingRows(projectNumber);
 }
 
 export function getRankingSummaryForUser(
   projectNumber: number,
-  selectedYear: number,
   userId: number,
 ): { rank: number; score: number; createdAt: string } | null {
-  return findRankingRowForUser(projectNumber, selectedYear, userId);
+  return findRankingRowForUser(projectNumber, userId);
 }
 
 export function getScoreSubmissionsForAdmin(params: {
@@ -166,7 +156,6 @@ export function getScoreSubmissionsForAdmin(params: {
     studentNumber: row.studentNumber,
     name: row.name,
     email: row.email,
-    semester: row.semester,
     projectNumber: row.projectNumber,
     score: row.score,
     createdAt: row.createdAt,

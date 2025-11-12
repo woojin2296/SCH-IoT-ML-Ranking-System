@@ -5,7 +5,6 @@ export type UserRecord = {
   name: string | null;
   publicId: string;
   role: string;
-  semester: number;
   lastLoginAt: string | null;
   isActive: number;
   createdAt: string;
@@ -23,7 +22,6 @@ export type UserCreateParams = {
   name: string;
   publicId: string;
   role: string;
-  semester: number;
 };
 
 export type UserUpdateParams = {
@@ -32,7 +30,6 @@ export type UserUpdateParams = {
   email?: string;
   name?: string | null;
   role?: string;
-  semester?: number;
   isActive?: number;
 };
 

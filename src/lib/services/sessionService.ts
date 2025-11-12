@@ -14,10 +14,6 @@ const SESSION_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
 export type SessionUser = UserRecord;
 
-function normalizeSemester(semesterRaw: number): number {
-  return semesterRaw >= 100000 ? Math.trunc(semesterRaw / 100) : semesterRaw;
-}
-
 export function createSession(userId: number) {
   if (!Number.isInteger(userId) || userId <= 0) {
     throw new InvalidArgumentError("userId", "must be a positive integer");
@@ -77,7 +73,6 @@ export function getUserBySessionToken(sessionToken: string): SessionUser | null 
       name: row.name,
       publicId: row.publicId,
       role: row.role,
-      semester: normalizeSemester(row.semester),
       lastLoginAt: row.lastLoginAt,
       isActive: row.isActive,
       createdAt: row.createdAt,

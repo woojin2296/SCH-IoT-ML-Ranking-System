@@ -7,10 +7,12 @@ const PUBLIC_PATHS = new Set<string>([
   "/robots.txt",
   "/sitemap.xml",
   "/api/auth/login",
+  "/api/auth/check",
+  "/api/user",
   "/api/session/validate",
 ]);
 
-const PUBLIC_PREFIXES = ["/_next", "/static", "/api/notice", "/api/user"];
+const PUBLIC_PREFIXES = ["/_next", "/static"];
 
 function isPublicPath(pathname: string) {
   if (PUBLIC_PATHS.has(pathname)) {
