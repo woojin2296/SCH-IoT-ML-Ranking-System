@@ -3,6 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateUser, establishUserSession } from "@/lib/services/authService";
 import { createRequestLogger } from "@/lib/request-logger";
 
+function shouldUseSecureCookies() {
+  const flag = process.env.COOKIE_SECURE;
+  if (typeof flag === "string") {
+    return flag.toLowerCase() !== "false" && flag !== "0";
+  }
+  return process.env.NODE_ENV === "production";
+}
+
 export const dynamic = "force-dynamic";
 
 type LoginPayload = {
@@ -102,7 +110,7 @@ export async function POST(request: NextRequest) {
     name: "session_token",
     value: session.sessionToken,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookies(),
     sameSite: "lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,

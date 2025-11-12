@@ -1,0 +1,17 @@
+version: "3.9"
+
+services:
+  nextapp:
+    container_name: sch-iot-ml-miniproject
+    image: sch-iot-ml-miniproject
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platform: linux/amd64
+    ports:
+      - "2022:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - /home/iot/iot-ml-miniproject/db:/app/db   # ✅ 절대경로로 지정
+    restart: unless-stopped

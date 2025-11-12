@@ -1,0 +1,8 @@
+node_modules
+Dockerfile
+.dockerignore
+.git
+.env
+db/*.db
+db/*.db-shm
+db/*.db-wal
