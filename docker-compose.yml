@@ -12,6 +12,7 @@ services:
       - "2022:3000"
     environment:
       - NODE_ENV=production
+      - COOKIE_SECURE=false
       - UPLOAD_ROOT=/app/uploads/evaluation-scores
     volumes:
       - /home/iot/iot-ml-miniproject/db:/app/db
