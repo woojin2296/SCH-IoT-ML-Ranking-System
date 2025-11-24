@@ -12,6 +12,8 @@ services:
       - "2022:3000"
     environment:
       - NODE_ENV=production
+      - UPLOAD_ROOT=/app/uploads/evaluation-scores
     volumes:
-      - /home/iot/iot-ml-miniproject/db:/app/db   # ✅ 절대경로로 지정
+      - /home/iot/iot-ml-miniproject/db:/app/db
+      - /home/iot/iot-ml-miniproject/upload:/app/uploads/evaluation-scores
     restart: unless-stopped
