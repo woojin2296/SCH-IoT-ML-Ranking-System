@@ -15,8 +15,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRequestIp } from "@/lib/request";
 import { logUserRequest, resolveRequestSource } from "@/lib/services/requestLogService";
 
-const ALLOWED_ROLES = new Set(["user", "admin"]);
-
 type RegisterUserPayload = {
   name?: string;
   studentNumber?: string;
@@ -30,7 +28,6 @@ type RegisterUserResult =
   | { status: "invalid_name" }
   | { status: "invalid_student_number" }
   | { status: "invalid_email" }
-  | { status: "invalid_role" }
   | { status: "duplicate_student_number" }
   | { status: "duplicate_email" }
   | {
@@ -45,8 +42,7 @@ async function registerUser(payload: RegisterUserPayload): Promise<RegisterUserR
   const studentNumber = payload.studentNumber?.trim();
   const emailRaw = payload.email.trim();
   const password = payload.password;
-  const roleRaw = payload.role?.trim().toLowerCase() ?? "user";
-  const role = ALLOWED_ROLES.has(roleRaw) ? roleRaw : "user";
+  const role = "user";
 
   if (!name || !studentNumber || !password || !emailRaw) {
     return { status: "missing_fields" };
@@ -58,10 +54,6 @@ async function registerUser(payload: RegisterUserPayload): Promise<RegisterUserR
 
   if (!/^\d{8}$/.test(studentNumber)) {
     return { status: "invalid_student_number" };
-  }
-
-  if (!ALLOWED_ROLES.has(role)) {
-    return { status: "invalid_role" };
   }
 
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw);
@@ -223,21 +215,6 @@ export async function handleRegisterUserApi(request: NextRequest): Promise<NextR
     });
     return NextResponse.json(
       { error: "학번 형식이 올바르지 않습니다." },
-      { status: 400 },
-    );
-  }
-
-  if (result.status === "invalid_role") {
-    logUserRequest({
-      source: resolveRequestSource(null, clientIp),
-      path: "/api/user",
-      method: request.method,
-      status: 400,
-      metadata: { reason: "invalid_role", role: payload.role },
-      ipAddress: resolvedIp,
-    });
-    return NextResponse.json(
-      { error: "역할 정보가 올바르지 않습니다." },
       { status: 400 },
     );
   }
