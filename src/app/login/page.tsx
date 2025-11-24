@@ -7,7 +7,6 @@ import { AppNoticesList } from "@/components/AppNoticesList";
 export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
-  
   return (
     <div className="min-h-svh flex flex-col items-center gap-4 p-6 md:p-10">
       <AppHero />

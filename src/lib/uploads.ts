@@ -1,7 +1,19 @@
 import path from "path";
 
-const UPLOAD_ROOT = path.join(process.cwd(), "uploads", "evaluation-scores");
 export const ALLOWED_UPLOAD_EXTENSIONS = new Set([".ipynb", ".py"]);
+
+const DEFAULT_UPLOAD_ROOT = path.join(process.cwd(), "uploads", "evaluation-scores");
+
+function getUploadRoot() {
+  const override = process.env.UPLOAD_ROOT?.trim();
+  // Allow absolute or relative paths; relative resolves from process.cwd()
+  if (override && override.length > 0) {
+    return path.resolve(override);
+  }
+  return DEFAULT_UPLOAD_ROOT;
+}
+
+const UPLOAD_ROOT = getUploadRoot();
 
 export const resolveWithinUploadRoot = (relativePath: string) => {
   const base = path.resolve(UPLOAD_ROOT);

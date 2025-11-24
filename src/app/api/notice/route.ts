@@ -8,8 +8,10 @@ import { getRequestIp } from "@/lib/request";
 // - Provides active notices without requiring authentication.
 // - Logs caller IP for observability.
 export async function GET(request: NextRequest) {
+
   const clientIp = getRequestIp(request);
   const notices = getActiveNotices();
+
   logUserRequest({
     source: resolveRequestSource(null, clientIp),
     path: "/api/notice",
@@ -18,5 +20,6 @@ export async function GET(request: NextRequest) {
     metadata: { count: notices.length },
     ipAddress: clientIp ?? "unknown",
   });
+  
   return NextResponse.json({ notices });
 }
