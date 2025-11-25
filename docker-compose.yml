@@ -9,9 +9,10 @@ services:
       dockerfile: Dockerfile
       platform: linux/amd64
     ports:
-      - "2022:3000"
+      - "2025:2025"
     environment:
       - NODE_ENV=production
+      - PORT=2025
       - COOKIE_SECURE=false
       - UPLOAD_ROOT=/app/uploads/evaluation-scores
     volumes:

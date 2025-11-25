@@ -28,7 +28,7 @@
 ## 실행 방법 (로컬)
 1) 의존성 설치: `npm install`  
 2) DB 준비: `npm run db:reset` (최초 또는 재설정 시)  
-3) 개발 서버: `npm run dev` 후 http://localhost:3000 접속  
+3) 개발 서버: `npm run dev` 후 http://localhost:2025 접속  
 4) 프로덕션 빌드/실행: `npm run build` → `npm run start`
 
 > 최초 가입 사용자는 기본적으로 `user` 권한입니다. 관리자 계정이 필요하면 DB에서 `users.role`을 `admin`으로 직접 수정하거나, 시드 데이터를 추가해 주세요.
@@ -37,7 +37,7 @@
 - 빌드: `docker build -t sch-iot-ml-miniproject .`
 - 단독 실행 예시:
   ```bash
-  docker run -p 2022:3000 \
+  docker run -p 2025:2025 \
     -v /ABS/PATH/db:/app/db \
     -e UPLOAD_ROOT=/app/uploads/evaluation-scores \
     -v /ABS/PATH/uploads:/app/uploads/evaluation-scores \

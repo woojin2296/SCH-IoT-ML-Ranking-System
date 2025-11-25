@@ -22,6 +22,8 @@ RUN mkdir -p /app/db /app/.next/cache/images && chown -R node:node /app
 
 COPY --from=builder /app ./
 
+ENV PORT=2025
+
 USER node
 
 ENTRYPOINT ["/bin/sh", "-c", "\
@@ -34,4 +36,4 @@ ENTRYPOINT ["/bin/sh", "-c", "\
   npm run start \
 "]
 
-EXPOSE 3000
+EXPOSE 2025
