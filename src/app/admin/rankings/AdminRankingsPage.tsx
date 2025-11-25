@@ -54,6 +54,7 @@ export default function AdminRankingsPage({
                 <th className="px-4 py-3">이름</th>
                 <th className="px-4 py-3">이메일</th>
                 <th className="px-4 py-3">Public ID</th>
+                <th className="px-4 py-3">첨부</th>
                 <th className="px-4 py-3">제출 일시</th>
                 <th className="px-4 py-3 text-center">관리</th>
               </tr>
@@ -61,7 +62,7 @@ export default function AdminRankingsPage({
             <tbody className="divide-y divide-neutral-100 text-neutral-700">
               {records.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-sm text-neutral-500">
+                  <td colSpan={10} className="px-4 py-6 text-center text-sm text-neutral-500">
                     선택된 조건에 해당하는 랭킹 데이터가 없습니다.
                   </td>
                 </tr>

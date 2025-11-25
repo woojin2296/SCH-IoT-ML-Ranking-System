@@ -43,4 +43,6 @@ next-env.d.ts
 # file uploads
 uploads/
 
+db/
+
 *.tar

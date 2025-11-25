@@ -41,6 +41,9 @@ export type AdminRankingRow = RankingRow & {
   name: string | null;
   email: string;
   studentNumber: string;
+  fileName: string | null;
+  fileSize: number | null;
+  hasFile: boolean;
 };
 
 export type ScoreSubmissionRow = {

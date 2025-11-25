@@ -10,6 +10,7 @@ import type {
 
 export function listRankingRows(projectNumber: number): RankingRow[] {
   const db = getDb();
+  const scoreOrder = resolveScoreOrder(projectNumber);
   return db
     .prepare(
       `
@@ -23,7 +24,7 @@ export function listRankingRows(projectNumber: number): RankingRow[] {
             u.public_id,
             ROW_NUMBER() OVER (
               PARTITION BY es.user_id
-              ORDER BY es.score DESC, es.created_at ASC
+              ORDER BY es.score ${scoreOrder}, es.created_at ASC
             ) AS per_user_rank
         FROM scores es
         INNER JOIN users u ON u.id = es.user_id
@@ -36,7 +37,7 @@ export function listRankingRows(projectNumber: number): RankingRow[] {
           project_number AS projectNumber,
           score,
           created_at AS createdAt,
-          ROW_NUMBER() OVER (ORDER BY score DESC, created_at ASC) AS position
+          ROW_NUMBER() OVER (ORDER BY score ${scoreOrder}, created_at ASC) AS position
         FROM best_scores
         WHERE per_user_rank = 1
         ORDER BY position ASC
@@ -47,7 +48,8 @@ export function listRankingRows(projectNumber: number): RankingRow[] {
 
 export function listAdminRankingRows(projectNumber: number): AdminRankingRow[] {
   const db = getDb();
-  return db
+  const scoreOrder = resolveScoreOrder(projectNumber);
+  const rows = db
     .prepare(
       `
         WITH best_scores AS (
@@ -57,13 +59,16 @@ export function listAdminRankingRows(projectNumber: number): AdminRankingRow[] {
             es.project_number,
             es.score,
             es.created_at,
+            es.file_name,
+            es.file_size,
+            es.file_path,
             u.public_id,
             u.name,
             u.email,
             u.student_number,
             ROW_NUMBER() OVER (
               PARTITION BY es.user_id
-              ORDER BY es.score DESC, es.created_at ASC
+              ORDER BY es.score ${scoreOrder}, es.created_at ASC
             ) AS per_user_rank
         FROM scores es
         INNER JOIN users u ON u.id = es.user_id
@@ -79,13 +84,18 @@ export function listAdminRankingRows(projectNumber: number): AdminRankingRow[] {
           project_number AS projectNumber,
           score,
           created_at AS createdAt,
-          ROW_NUMBER() OVER (ORDER BY score DESC, created_at ASC) AS position
+          file_name AS fileName,
+          file_size AS fileSize,
+          CASE WHEN file_path IS NOT NULL AND file_path != '' THEN 1 ELSE 0 END AS hasFile,
+          ROW_NUMBER() OVER (ORDER BY score ${scoreOrder}, created_at ASC) AS position
         FROM best_scores
         WHERE per_user_rank = 1
         ORDER BY position ASC
       `,
     )
-    .all(projectNumber) as AdminRankingRow[];
+    .all(projectNumber) as Array<Omit<AdminRankingRow, "hasFile"> & { hasFile: number | boolean }>;
+
+  return rows.map((row) => ({ ...row, hasFile: Boolean(row.hasFile) }));
 }
 
 export function listScoresByUser(userId: number, projectNumber?: number | null): ScoreRow[] {
@@ -277,6 +287,7 @@ export function findRankingRowForUser(
   userId: number,
 ): { rank: number; score: number; createdAt: string } | null {
   const db = getDb();
+  const scoreOrder = resolveScoreOrder(projectNumber);
   const row = db
     .prepare(
       `
@@ -289,7 +300,7 @@ export function findRankingRowForUser(
             es.created_at,
             ROW_NUMBER() OVER (
               PARTITION BY es.user_id
-              ORDER BY es.score DESC, es.created_at ASC
+              ORDER BY es.score ${scoreOrder}, es.created_at ASC
             ) AS per_user_rank
           FROM scores es
           INNER JOIN users u ON u.id = es.user_id
@@ -302,7 +313,7 @@ export function findRankingRowForUser(
             project_number,
             score,
             created_at,
-            ROW_NUMBER() OVER (ORDER BY score DESC, created_at ASC) AS overall_rank
+            ROW_NUMBER() OVER (ORDER BY score ${scoreOrder}, created_at ASC) AS overall_rank
           FROM best_scores
           WHERE per_user_rank = 1
         )
@@ -320,4 +331,10 @@ export function findRankingRowForUser(
     | undefined;
 
   return row ?? null;
+}
+
+type ScoreOrder = "ASC" | "DESC";
+
+function resolveScoreOrder(projectNumber: number): ScoreOrder {
+  return projectNumber === 3 || projectNumber === 4 ? "ASC" : "DESC";
 }

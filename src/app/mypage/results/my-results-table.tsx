@@ -19,6 +19,13 @@ type Props = {
   scores: ScoreRow[];
 };
 
+function formatScore(value: number): string {
+  if (!Number.isFinite(value)) {
+    return String(value);
+  }
+  return value.toString();
+}
+
 export default function MyResultsTable({ scores }: Props) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<number | null>(null);
@@ -122,7 +129,7 @@ export default function MyResultsTable({ scores }: Props) {
               <tr key={row.id}>
                 <td className="px-4 py-3">{startIndex + index + 1}</td>
                 <td className="px-4 py-3">프로젝트 {row.projectNumber}</td>
-                <td className="px-4 py-3 text-right">{row.score.toFixed(4)}</td>
+                <td className="px-4 py-3 text-right">{formatScore(row.score)}</td>
                 <td className="px-4 py-3">
                   {dateTimeFormatter.format(new Date(row.createdAt))}
                 </td>

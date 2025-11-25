@@ -34,6 +34,13 @@ function formatDateTime(value: string) {
   });
 }
 
+function formatScore(value: number): string {
+  if (!Number.isFinite(value)) {
+    return String(value);
+  }
+  return value.toString();
+}
+
 export function RankingTable({ rankings, sessionUserId }: RankingTableProps) {
   return (
     <div className="overflow-hidden rounded-lg border">
@@ -77,7 +84,7 @@ export function RankingTable({ rankings, sessionUserId }: RankingTableProps) {
               return (
                 <tr key={row.id} className={rowClassNames}>
                   <td className="px-4 py-3 font-semibold">{rankLabel}</td>
-                  <td className="px-4 py-3 font-medium">{row.score.toFixed(4)}</td>
+                  <td className="px-4 py-3 font-medium">{formatScore(row.score)}</td>
                   <td className="px-4 py-3 text-neutral-500">{row.publicId}</td>
                   <td className="px-4 py-3 text-neutral-500">{formatDateTime(row.createdAt)}</td>
                 </tr>

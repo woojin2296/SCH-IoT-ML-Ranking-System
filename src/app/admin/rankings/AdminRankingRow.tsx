@@ -15,6 +15,9 @@ type RankingRecord = {
   name: string | null;
   email: string;
   studentNumber: string;
+  fileName: string | null;
+  fileSize: number | null;
+  hasFile: boolean;
 };
 
 export default function AdminRankingRow({ record }: { record: RankingRecord }) {
@@ -59,6 +62,22 @@ export default function AdminRankingRow({ record }: { record: RankingRecord }) {
       <td className="px-4 py-3">{record.name ?? "-"}</td>
       <td className="px-4 py-3">{record.email}</td>
       <td className="px-4 py-3">{record.publicId}</td>
+      <td className="px-4 py-3">
+        {record.hasFile ? (
+          <div className="flex flex-col gap-1">
+            <a
+              href={`/api/score/my/${record.id}/file`}
+              className="inline-flex items-center rounded-md border border-neutral-200 px-3 py-1 text-xs font-medium text-[#265392] transition hover:border-[#265392]"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {formatAttachment(record) ?? "파일"}
+            </a>
+          </div>
+        ) : (
+          "-"
+        )}
+      </td>
       <td className="px-4 py-3 whitespace-nowrap">{formattedTimestamp}</td>
       <td className="px-4 py-3">
         <div className="flex flex-col gap-2">
@@ -101,7 +120,31 @@ function formatScore(value: number): string {
   if (!Number.isFinite(value)) {
     return String(value);
   }
-  return value.toLocaleString("ko-KR", {
-    maximumFractionDigits: 4,
-  });
+  return value.toString();
+}
+
+function formatAttachment(record: { fileName: string | null; fileSize: number | null }): string {
+  if (record.fileName && record.fileSize) {
+    return `${record.fileName} (${formatBytes(record.fileSize)})`;
+  }
+  if (record.fileName) {
+    return record.fileName;
+  }
+  if (record.fileSize) {
+    return `첨부 (${formatBytes(record.fileSize)})`;
+  }
+  return "첨부 있음";
+}
+
+function formatBytes(bytes: number | null): string {
+  if (bytes === null || bytes === undefined || Number.isNaN(bytes)) {
+    return "";
+  }
+  if (bytes < 1024) {
+    return `${bytes}B`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)}KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 }
