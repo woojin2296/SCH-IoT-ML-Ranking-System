@@ -19,7 +19,7 @@ export default function AdminRankingsPage({
           <h2 className="text-lg font-semibold">랭킹 관리</h2>
           <p className="text-sm text-neutral-500">선택한 프로젝트의 상위 점수를 확인하고 필요 시 기록을 삭제할 수 있습니다.</p>
         </div>
-        <div className="px-4 lg:px-6">
+        <div className="px-4 lg:px-6 space-y-4">
           <form className="flex flex-wrap items-end gap-4" action="/admin/rankings" method="get">
             <div className="flex flex-col gap-1">
               <label htmlFor="projectSelect" className="text-sm font-medium text-neutral-700">
@@ -42,6 +42,18 @@ export default function AdminRankingsPage({
               필터 적용
             </Button>
           </form>
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium text-neutral-700">모든 프로젝트를 한 번에 다운로드 (시트로 구분)</p>
+            <Button
+              variant="outline"
+              className="border-neutral-200 text-[#265392] w-fit"
+              asChild
+            >
+              <a href="/api/admin/rankings/export" download>
+                전체 프로젝트 엑셀 다운로드
+              </a>
+            </Button>
+          </div>
         </div>
         <div className="px-4 lg:px-6 overflow-x-auto">
           <table className="min-w-full divide-y divide-neutral-200 bg-white text-sm rounded-md border">

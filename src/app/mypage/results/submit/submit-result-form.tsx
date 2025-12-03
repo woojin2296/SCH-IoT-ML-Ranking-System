@@ -19,6 +19,7 @@ export default function SubmitResultForm() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<SubmitState>("idle");
+  const requiresNormalizedScore = projectNumber === 1 || projectNumber === 2;
 
   useEffect(() => {
     if (status === "success") {
@@ -58,6 +59,39 @@ export default function SubmitResultForm() {
     setError(null);
   };
 
+  const handleScoreChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const { value } = event.target;
+
+    if (!requiresNormalizedScore) {
+      setScore(value);
+      return;
+    }
+
+    if (value === "") {
+      setScore(value);
+      return;
+    }
+
+    const numericValue = Number.parseFloat(value);
+
+    if (Number.isNaN(numericValue)) {
+      setScore(value);
+      return;
+    }
+
+    if (numericValue < 0) {
+      setScore("0");
+      return;
+    }
+
+    if (numericValue > 1) {
+      setScore("1");
+      return;
+    }
+
+    setScore(value);
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
@@ -65,6 +99,11 @@ export default function SubmitResultForm() {
     const numericScore = Number.parseFloat(score);
     if (Number.isNaN(numericScore)) {
       setError("점수를 숫자로 입력해주세요.");
+      return;
+    }
+
+    if (requiresNormalizedScore && (numericScore < 0 || numericScore > 1)) {
+      setError("0과 1 사이의 값으로 입력해주세요.");
       return;
     }
 
@@ -142,16 +181,18 @@ export default function SubmitResultForm() {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="score">점수</Label>
-          <Input
-            id="score"
-            type="number"
-            inputMode="decimal"
-            step="0.0001"
-            placeholder="예: 0.9123"
-          value={score}
-          onChange={(event) => setScore(event.target.value)}
-          required
-        />
+            <Input
+              id="score"
+              type="number"
+              inputMode="decimal"
+              step="0.0001"
+              min={requiresNormalizedScore ? 0 : undefined}
+              max={requiresNormalizedScore ? 1 : undefined}
+              placeholder="예: 0.9123"
+              value={score}
+              onChange={handleScoreChange}
+              required
+            />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="attachment">결과 파일</Label>
