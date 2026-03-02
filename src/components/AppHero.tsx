@@ -21,7 +21,7 @@ export default function AppHero() {
       </div>
       <div className="mb-2 flex flex-col items-center gap-2 text-center">
         <h1 className="text-xl font-bold">
-          머신러닝 미니 프로젝트 랭킹 시스템
+          딥러닝 미니 프로젝트 랭킹 시스템
         </h1>
       </div>
     </div>

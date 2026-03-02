@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "미니 프로젝트 랭킹 시스템",
-  description: "순천향대학교 사물인터넷학과 머신러닝 미니 프로젝트 랭킹 시스템",
+  description: "순천향대학교 사물인터넷학과 딥러닝 미니 프로젝트 랭킹 시스템",
 };
 
 const pretendard = localFont({
